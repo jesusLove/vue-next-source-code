@@ -69,25 +69,37 @@ const arrayInstrumentations: Record<string, Function> = {}
   }
 })
 
+// Get 拦截器
+// 进行 track ，依赖收集。
 function createGetter(isReadonly = false, shallow = false) {
+  // 三个参数：目标对象，属性名、proxy实例本身（操作行为所针对的对象）
   return function get(target: Target, key: string | symbol, receiver: object) {
+    // 1. 对 __v_isReactive 属性对应的值。true: 表示该 target 响应的 proxy。
+    // 进行 isReactive 方法会走该判断
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
     } else if (key === ReactiveFlags.IS_READONLY) {
+      // __v_isReadonly 属性对应的值。
       return isReadonly
     } else if (
       key === ReactiveFlags.RAW &&
       receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
     ) {
+      // __v_raw 表示已经存在 proxy 直接读取 map 中的值。
       return target
     }
-
+    // 2. 参考：/vue/examples/demo/baseHandler.text.html。
+    // target 为数组
     const targetIsArray = isArray(target)
-
+    // target 为数组并且 key
+    // key 取值，对应arrayInstrumentations 对象
+    /**
+     * includes、indexOf、lastIndexOf、pop、push、shift、splice、unshift
+     */
     if (!isReadonly && targetIsArray && hasOwn(arrayInstrumentations, key)) {
       return Reflect.get(arrayInstrumentations, key, receiver)
     }
-
+    // 3. Reflect.get方法查找并返回target对象的name属性，如果没有该属性，则返回undefined。
     const res = Reflect.get(target, key, receiver)
 
     if (
@@ -97,7 +109,7 @@ function createGetter(isReadonly = false, shallow = false) {
     ) {
       return res
     }
-
+    // 4. 只读 proxy 无需依赖收集。
     if (!isReadonly) {
       track(target, TrackOpTypes.GET, key)
     }
@@ -105,7 +117,7 @@ function createGetter(isReadonly = false, shallow = false) {
     if (shallow) {
       return res
     }
-
+    // res 为 ref 对象时，进行
     if (isRef(res)) {
       // ref unwrapping - does not apply for Array + integer key.
       const shouldUnwrap = !targetIsArray || !isIntegerKey(key)
@@ -127,6 +139,7 @@ const set = /*#__PURE__*/ createSetter()
 const shallowSet = /*#__PURE__*/ createSetter(true)
 
 function createSetter(shallow = false) {
+  // set方法用来拦截某个属性的赋值操作，可以接受四个参数，依次为目标对象、属性名、属性值和 Proxy 实例本身，其中最后一个参数可选。
   return function set(
     target: object,
     key: string | symbol,
@@ -150,6 +163,7 @@ function createSetter(shallow = false) {
         : hasOwn(target, key)
     const result = Reflect.set(target, key, value, receiver)
     // don't trigger if target is something up in the prototype chain of original
+    // 如果 target 是原型链中，则不触发。
     if (target === toRaw(receiver)) {
       if (!hadKey) {
         trigger(target, TriggerOpTypes.ADD, key, value)

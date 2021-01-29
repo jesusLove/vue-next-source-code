@@ -1,0 +1,18 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app"></div>
+
+<script>
+  const {createApp, reactive, ref} = Vue
+
+  const App = {
+    setup() {
+      // 测试数组对象
+      const state = reactive([1,2,4])
+      const a = state.pop() // <===== 断点，查看执行逻辑。
+      console.log(a)
+      return {state}
+    }
+  }
+  createApp(App).mount('#app')
+</script>

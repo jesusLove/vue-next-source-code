@@ -120,6 +120,7 @@ function cleanup(effect: ReactiveEffect) {
   }
 }
 
+// 避免跨组件依赖内存泄露
 let shouldTrack = true
 const trackStack: boolean[] = []
 
@@ -142,16 +143,30 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
   }
+  /**
+  {
+    target: 
+    {
+      key: [effect1, effect2]
+    }
+  }
+   */
+  // 1. 查询缓存
   let depsMap = targetMap.get(target)
+  // 2. 不存在创建
   if (!depsMap) {
     targetMap.set(target, (depsMap = new Map()))
   }
+  // 3. key 对应的 dep 集合。
   let dep = depsMap.get(key)
   if (!dep) {
     depsMap.set(key, (dep = new Set()))
   }
+  // 4. 不存在则缓存
   if (!dep.has(activeEffect)) {
+    // 添加
     dep.add(activeEffect)
+    // 5. 双向持有
     activeEffect.deps.push(dep)
     if (__DEV__ && activeEffect.options.onTrack) {
       activeEffect.options.onTrack({
@@ -172,13 +187,16 @@ export function trigger(
   oldValue?: unknown,
   oldTarget?: Map<unknown, unknown> | Set<unknown>
 ) {
+  // 1. 查询缓存
   const depsMap = targetMap.get(target)
   if (!depsMap) {
     // never been tracked
+    // 没有被跟踪
     return
   }
-
+  // 2.
   const effects = new Set<ReactiveEffect>()
+
   const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
     if (effectsToAdd) {
       effectsToAdd.forEach(effect => {
@@ -188,7 +206,7 @@ export function trigger(
       })
     }
   }
-
+  // 清除
   if (type === TriggerOpTypes.CLEAR) {
     // collection being cleared
     // trigger all effects for target

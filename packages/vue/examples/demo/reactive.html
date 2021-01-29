@@ -1,0 +1,36 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app">
+  {{state.message}}
+</div>
+
+<script>
+  const {createApp, reactive,readonly, isReactive, isReadonly, toRaw} = Vue
+  const App = {
+    setup(){
+      const state = reactive({
+        message: 'Hello Reactive'
+      })
+      const state2 = reactive(state)
+      const ro = readonly({
+        nest: 'aaa'
+      })
+      
+      console.log(isReactive(state)) // true
+      console.log(isReadonly(state)) // false
+      console.log(isReactive(ro)) // false
+      console.log(isReadonly(ro)) // true
+      const reactiveOnly = readonly(state)
+      console.log(isReactive(reactiveOnly)) // true
+
+      console.log(toRaw(state))
+      console.log(toRaw(reactiveOnly))
+      console.log(toRaw(state2))
+      return {
+        state
+      }
+    }
+  }
+  createApp(App).mount('#app')
+
+</script>

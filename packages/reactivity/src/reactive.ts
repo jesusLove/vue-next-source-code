@@ -12,11 +12,12 @@ import {
 } from './collectionHandlers'
 import { UnwrapRef, Ref } from './ref'
 
+// 响应标识
 export const enum ReactiveFlags {
-  SKIP = '__v_skip',
-  IS_REACTIVE = '__v_isReactive',
-  IS_READONLY = '__v_isReadonly',
-  RAW = '__v_raw'
+  SKIP = '__v_skip', // 对象条件该标识标识，永远不进行 Proxy 处理
+  IS_REACTIVE = '__v_isReactive', // 是否为 Reactive
+  IS_READONLY = '__v_isReadonly', // 是否为 Readonly
+  RAW = '__v_raw' // 对应映射值
 }
 
 export interface Target {
@@ -25,16 +26,18 @@ export interface Target {
   [ReactiveFlags.IS_READONLY]?: boolean
   [ReactiveFlags.RAW]?: any
 }
-
+// 将 reactive 和 readonly 分开存储。
 export const reactiveMap = new WeakMap<Target, any>()
 export const readonlyMap = new WeakMap<Target, any>()
 
+// Target 类型， Object/ Array 为普通类型
+// Map / Set / WeakMap / WeakSet 为集合类型
 const enum TargetType {
   INVALID = 0,
   COMMON = 1,
   COLLECTION = 2
 }
-
+// 定义类型映射白名单
 function targetTypeMap(rawType: string) {
   switch (rawType) {
     case 'Object':
@@ -50,6 +53,10 @@ function targetTypeMap(rawType: string) {
   }
 }
 
+// 1. value 不可被转为 Proxy 或 不可被扩展时，TargetType 为 无效。
+// 2. toRawType ==> Object.prototype.toString.call(value).slice(8, -1)
+// 例如：{} ==> "Object", [] ==> "Array"
+// 通过 targetTypeMap 获取对应的 TargetType。
 function getTargetType(value: Target) {
   return value[ReactiveFlags.SKIP] || !Object.isExtensible(value)
     ? TargetType.INVALID
@@ -81,9 +88,11 @@ type UnwrapNestedRefs<T> = T extends Ref ? T : UnwrapRef<T>
  * count.value // -> 1
  * ```
  */
+// 函数重载
 export function reactive<T extends object>(target: T): UnwrapNestedRefs<T>
 export function reactive(target: object) {
   // if trying to observe a readonly proxy, return the readonly version.
+  // 如果 target 已经是 readonly proxy 直接返回。
   if (target && (target as Target)[ReactiveFlags.IS_READONLY]) {
     return target
   }
@@ -108,7 +117,7 @@ export function shallowReactive<T extends object>(target: T): T {
     shallowCollectionHandlers
   )
 }
-
+// infer 标识在 extends 条件语句中待推断的类型变量。 《参考：/typescript/infer.test.ts 文件》
 type Primitive = string | number | boolean | bigint | symbol | undefined | null
 type Builtin = Primitive | Function | Date | Error | RegExp
 export type DeepReadonly<T> = T extends Builtin
@@ -169,6 +178,7 @@ function createReactiveObject(
   baseHandlers: ProxyHandler<any>,
   collectionHandlers: ProxyHandler<any>
 ) {
+  // target 必须为对象类型。
   if (!isObject(target)) {
     if (__DEV__) {
       console.warn(`value cannot be made reactive: ${String(target)}`)
@@ -177,6 +187,7 @@ function createReactiveObject(
   }
   // target is already a Proxy, return it.
   // exception: calling readonly() on a reactive object
+  // target 已经是 proxy 直接返回
   if (
     target[ReactiveFlags.RAW] &&
     !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
@@ -184,20 +195,26 @@ function createReactiveObject(
     return target
   }
   // target already has corresponding Proxy
+  // 已经有对应的 映射 Proxy 返回。
   const proxyMap = isReadonly ? readonlyMap : reactiveMap
   const existingProxy = proxyMap.get(target)
   if (existingProxy) {
     return existingProxy
   }
   // only a whitelist of value types can be observed.
+  // 验证 target 类型是否为白名单中的类型。
   const targetType = getTargetType(target)
   if (targetType === TargetType.INVALID) {
     return target
   }
+  // 创建 target 的 proxy。
+  // proxy 第二个参数 handler，定义对象的拦截行为。
+  // 关于 Proxy 参考 ：https://es6.ruanyifeng.com/#docs/proxy
   const proxy = new Proxy(
     target,
     targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
   )
+  // 缓存到 proxy 中，分别缓存到 readonlyMap  和 reactiveMap 中。
   proxyMap.set(target, proxy)
   return proxy
 }
