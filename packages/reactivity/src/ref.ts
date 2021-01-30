@@ -30,18 +30,19 @@ export type ToRefs<T = any> = {
 const convert = <T extends unknown>(val: T): T =>
   isObject(val) ? reactive(val) : val
 
+// 是否为 ref 对象
 export function isRef<T>(r: Ref<T> | unknown): r is Ref<T>
 export function isRef(r: any): r is Ref {
-  return Boolean(r && r.__v_isRef === true)
+  return Boolean(r && r.__v_isRef === true) // 根据 __v_isRef 标识位
 }
-
+// 创建 ref 函数重载
 export function ref<T extends object>(value: T): ToRef<T>
 export function ref<T>(value: T): Ref<UnwrapRef<T>>
 export function ref<T = any>(): Ref<T | undefined>
 export function ref(value?: unknown) {
   return createRef(value)
 }
-
+// 创建浅层 ref 函数
 export function shallowRef<T extends object>(
   value: T
 ): T extends Ref ? T : Ref<T>
@@ -50,13 +51,18 @@ export function shallowRef<T = any>(): Ref<T | undefined>
 export function shallowRef(value?: unknown) {
   return createRef(value, true)
 }
-
+// 创建 Ref 对象
+// 私有变量 _value 保存值，设置其 setter 和 getter 方法。
+// getter 中进行 track
+// setter 中触发 trigger
 class RefImpl<T> {
   private _value: T
 
-  public readonly __v_isRef = true
+  public readonly __v_isRef = true // 标识
 
   constructor(private _rawValue: T, public readonly _shallow = false) {
+    // 浅层 ref 私有 _value 为 _rawValue
+    // 深层将 rawValue 转为响应对象，然后赋值个 _value
     this._value = _shallow ? _rawValue : convert(_rawValue)
   }
 
@@ -73,11 +79,13 @@ class RefImpl<T> {
     }
   }
 }
-
+// 创建 ref，过滤掉已经为 ref 对象的值
 function createRef(rawValue: unknown, shallow = false) {
+  // 1. 判断是否已经为 ref 对象
   if (isRef(rawValue)) {
     return rawValue
   }
+  // 2. 创建 ref 对象
   return new RefImpl(rawValue, shallow)
 }
 
@@ -85,6 +93,7 @@ export function triggerRef(ref: Ref) {
   trigger(toRaw(ref), TriggerOpTypes.SET, 'value', __DEV__ ? ref.value : void 0)
 }
 
+// 如果是 ref 对象，返回内部值，否则直接返回。
 export function unref<T>(ref: T): T extends Ref<infer V> ? V : T {
   return isRef(ref) ? (ref.value as any) : ref
 }

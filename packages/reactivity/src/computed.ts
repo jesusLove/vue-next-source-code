@@ -61,6 +61,9 @@ class ComputedRefImpl<T> {
   }
 }
 
+// computed 重载
+// 1. 只接受 getter 方法，只读的计算属性，返回只读的 ref
+// 2. setter 和 getter 方法。返回可读写的 ref。
 export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>
 export function computed<T>(
   options: WritableComputedOptions<T>

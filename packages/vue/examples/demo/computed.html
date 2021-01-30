@@ -1,0 +1,42 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app"></div>
+
+<script>
+
+  const {createApp, ref, computed} = Vue
+  const count = ref(1)
+  
+  // 计算属性
+  // 1. getter 只读的计算属性
+  // 2. setter / getter 可读写的计算属性。
+  createApp({
+    template: `{{count}} -- {{writePulsOne}} -- {{pulsOne}}`,
+    setup() {
+      console.log('--------------------------- get ---------------------')
+      const pulsOne = computed(() => count.value + 1)
+      console.log(pulsOne.value) // 2 
+      console.log(count.value) // 1 <----- 没有改变
+
+      console.log('---------------------------- setter / getter ---------------------')
+      // computed 只有 getter 方法，无法修改 count
+      const writePulsOne = computed({
+        get: () => count.value + 1,
+        set: val => {
+          count.value = val - 1
+        }
+      })
+      console.log('writePulsOne: ',writePulsOne.value) // 2
+
+      writePulsOne.value = 1
+      console.log('writePulsOne: ',writePulsOne.value) // 1
+      console.log('count: ', count.value) // 0 <----- setter 方法中对 count 进行修改
+
+      
+      count.value = 200
+      console.log('writePulsOne: ', writePulsOne.value)
+      return {count, writePulsOne, pulsOne}
+    }
+  }).mount('#app')
+
+</script>
