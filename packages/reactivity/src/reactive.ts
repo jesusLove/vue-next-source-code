@@ -218,28 +218,33 @@ function createReactiveObject(
   proxyMap.set(target, proxy)
   return proxy
 }
-
+// 检测是否是 reactive 创建的 Proxy 对象
+// 1. 如果是 Readonly 在读取 原始值 __v_row
+// 2. !! 将目标值转为布尔值，直接获取 __v_isReactive 属性值
 export function isReactive(value: unknown): boolean {
   if (isReadonly(value)) {
     return isReactive((value as Target)[ReactiveFlags.RAW])
   }
   return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE])
 }
-
+// 检测是否是 readonly 创建的 Proxy 对象
+// 直接获取 __v_isReadonly 属性的布尔值。
 export function isReadonly(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_READONLY])
 }
-
+// 检测是否是 Proxy 对象
+// 符合 isReactive 或者 isReadonly
 export function isProxy(value: unknown): boolean {
   return isReactive(value) || isReadonly(value)
 }
-
+// 返回 reactive 或 readonly proxy 的原始对象
+// 用于临时读取，不会引起 proxy 访问/跟踪开销。
 export function toRaw<T>(observed: T): T {
   return (
     (observed && toRaw((observed as Target)[ReactiveFlags.RAW])) || observed
   )
 }
-
+// 标记一个对象永远不会转为 Proxy.
 export function markRaw<T extends object>(value: T): T {
   def(value, ReactiveFlags.SKIP, true)
   return value

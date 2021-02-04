@@ -2,19 +2,16 @@
 
 <div id="app"></div>
 
-<script>
-  const {createApp, reactive, ref} = Vue
-  const App = {
-    template: `{{count}}`,
-    setup() {
-      console.log('---------------ref：接受一个内部值返回一个响应且可变的 ref 对象----------------')
-      // 
-      const count = ref(0)
-      console.log(count.value) // 0
-      count.value ++
-      console.log(count.value) // 1
-      return {count}
-    }
-  }
-  createApp(App).mount('#app')
+<script lang="ts">
+  const {createApp, reactive, ref, unref, isRef} = Vue
+  console.log('---------------ref：接受一个内部值返回一个响应且可变的 ref 对象----------------')
+  const count = ref(0)
+  console.log('count.value: ', count.value) // 0
+  count.value ++
+  console.log('count.value ++: ', count.value) // 1
+
+  // const foo = ref<string | number>('foo')
+  
+  console.log('unref: ', unref(count))
+  console.log('unref --> isRef', isRef(count)? count.value : count)
 </script>

@@ -1,0 +1,41 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app"></div>
+
+<script>
+  const {reactive, shallowReactive, isReactive, readonly, isReadonly, shallowReadonly, toRaw, markRaw} = Vue
+  console.log('---------------不同类型 reactive 比较----------------')
+  const obj1 = reactive({name: 'lee', age: 20, address: {
+    label: '地址'
+  }})
+  console.log('reacitve property --> isReacitve: ', isReactive(obj1.address)) // true <===== 属性对象也是响应的
+  
+  const sObj = shallowReactive({name: 'lee', age: 20, address: {
+    label: '地址'
+  }})
+  console.log('shallowReactive property --> isReactive: ', isReactive(sObj.address)) // false <==== 属性对象时非响应的
+  
+  const rObj = readonly({name: 'lee', age: 20, address: {
+    label: '地址'
+  }})
+    // rObj.name = 'qq' // error 目标是只读的。
+  console.log('readonly --> isReadonly: ', isReadonly(rObj)) // true
+  console.log('readonly --> isReactive: ', isReactive(rObj)) // false
+
+  const srObj = shallowReadonly({name: 'lee', age: 20, address: {
+    label: '地址'
+  }})
+  // srObj.name = 'qq' 
+  srObj.address.label = '哈哈'
+  console.log('shallowReadonly-->address.label: ', srObj.address.label) // 哈哈
+  
+  console.log('--------------------toRaw, markRaw-------------------------')
+  const foo = {}
+  const reactiveFoo = reactive(foo)
+  // 读取原始值
+  console.log('toRaw --> toRaw(reactiveFoo) === foo:', toRaw(reactiveFoo) === foo) // true 
+
+  const markFoo = markRaw(foo) // 不可以创建 proxy
+
+  console.log('markRaw -->isReactive(reactive(markFoo))', isReactive(reactive(markRaw))) // false
+</script>

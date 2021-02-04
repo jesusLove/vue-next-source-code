@@ -34,6 +34,7 @@ class ComputedRefImpl<T> {
     private readonly _setter: ComputedSetter<T>,
     isReadonly: boolean
   ) {
+    // 基于 effect 实现
     this.effect = effect(getter, {
       lazy: true,
       scheduler: () => {
@@ -46,7 +47,7 @@ class ComputedRefImpl<T> {
 
     this[ReactiveFlags.IS_READONLY] = isReadonly
   }
-
+  // get 读取
   get value() {
     if (this._dirty) {
       this._value = this.effect()

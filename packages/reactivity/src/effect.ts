@@ -1,14 +1,25 @@
+// 引入枚举类型：用来表示 Track 和 trigger 的类型。
 import { TrackOpTypes, TriggerOpTypes } from './operations'
+// 一些辅助方法
 import { EMPTY_OBJ, isArray, isIntegerKey, isMap } from '@vue/shared'
 
 // The main WeakMap that stores {target -> key -> dep} connections.
 // Conceptually, it's easier to think of a dependency as a Dep class
 // which maintains a Set of subscribers, but we simply store them as
 // raw Sets to reduce memory overhead.
+/**
+ * 数据结构 target -> key -> dep
+{
+  target: 
+  {
+    key: [effect1, effect2]
+  }
+}
+  */
 type Dep = Set<ReactiveEffect>
 type KeyToDepMap = Map<any, Dep>
 const targetMap = new WeakMap<any, KeyToDepMap>()
-
+//  effect 对象接口
 export interface ReactiveEffect<T = any> {
   (): T
   _isEffect: true
@@ -19,13 +30,13 @@ export interface ReactiveEffect<T = any> {
   options: ReactiveEffectOptions
   allowRecurse: boolean
 }
-
+// effection 配置
 export interface ReactiveEffectOptions {
-  lazy?: boolean
-  scheduler?: (job: ReactiveEffect) => void
-  onTrack?: (event: DebuggerEvent) => void
-  onTrigger?: (event: DebuggerEvent) => void
-  onStop?: () => void
+  lazy?: boolean // 懒加载，为 true 不会立即执行
+  scheduler?: (job: ReactiveEffect) => void // 调度函数
+  onTrack?: (event: DebuggerEvent) => void // 跟踪是触发
+  onTrigger?: (event: DebuggerEvent) => void // 响应触发
+  onStop?: () => void // 停止触发
   allowRecurse?: boolean
 }
 
@@ -42,25 +53,37 @@ export interface DebuggerEventExtraInfo {
   oldTarget?: Map<any, any> | Set<any>
 }
 
-const effectStack: ReactiveEffect[] = []
+// effect 缓存栈
+const effectStack: ReactiveEffect[] = [] // 缓存数组
 let activeEffect: ReactiveEffect | undefined
 
 export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
 export const MAP_KEY_ITERATE_KEY = Symbol(__DEV__ ? 'Map key iterate' : '')
 
+// 判断是否为 effect
 export function isEffect(fn: any): fn is ReactiveEffect {
   return fn && fn._isEffect === true
 }
 
+// 1. 创建一个 effect, 非懒加载 立即执行一次
+/**
+ *
+ * @param fn 方法
+ * @param options 配置，默认空对象
+ */
 export function effect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions = EMPTY_OBJ
 ): ReactiveEffect<T> {
+  // 判断 fn 是否已经为 effect， 如果是读取器 raw 属性保存的原始 fn
   if (isEffect(fn)) {
     fn = fn.raw
   }
+  // 1. 创建 effect
   const effect = createReactiveEffect(fn, options)
+  // 2. 立即执行
   if (!options.lazy) {
+    // 非懒加载立即执行 effect
     effect()
   }
   return effect
@@ -78,6 +101,7 @@ export function stop(effect: ReactiveEffect) {
 
 let uid = 0
 
+// 创建 effect
 function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
@@ -87,10 +111,11 @@ function createReactiveEffect<T = any>(
       return options.scheduler ? undefined : fn()
     }
     if (!effectStack.includes(effect)) {
-      cleanup(effect)
+      cleanup(effect) // 清空 deps 对 effect 的依赖
+      // try ... finally ：finally 中的无聊是否抛出异常，都会执行。
       try {
         enableTracking()
-        effectStack.push(effect)
+        effectStack.push(effect) // 缓存 effect
         activeEffect = effect
         return fn()
       } finally {
@@ -110,6 +135,7 @@ function createReactiveEffect<T = any>(
   return effect
 }
 
+// 清除，deps 中 对象对应的 effect 属性的值。
 function cleanup(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {
@@ -143,14 +169,6 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
   }
-  /**
-  {
-    target: 
-    {
-      key: [effect1, effect2]
-    }
-  }
-   */
   // 1. 查询缓存
   let depsMap = targetMap.get(target)
   // 2. 不存在创建

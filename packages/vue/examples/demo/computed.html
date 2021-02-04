@@ -4,39 +4,59 @@
 
 <script>
 
-  const {createApp, ref, computed} = Vue
+  const { ref,reactive, computed, watchEffect, watch} = Vue
   const count = ref(1)
   
   // 计算属性
   // 1. getter 只读的计算属性
   // 2. setter / getter 可读写的计算属性。
-  createApp({
-    template: `{{count}} -- {{writePulsOne}} -- {{pulsOne}}`,
-    setup() {
-      console.log('--------------------------- get ---------------------')
-      const pulsOne = computed(() => count.value + 1)
-      console.log(pulsOne.value) // 2 
-      console.log(count.value) // 1 <----- 没有改变
+  console.log('--------------------------- get ---------------------')
+  const pulsOne = computed(() => count.value + 1)
+  console.log(pulsOne.value) // 2 
+  console.log(count.value) // 1 <----- 没有改变
 
-      console.log('---------------------------- setter / getter ---------------------')
-      // computed 只有 getter 方法，无法修改 count
-      const writePulsOne = computed({
-        get: () => count.value + 1,
-        set: val => {
-          count.value = val - 1
-        }
-      })
-      console.log('writePulsOne: ',writePulsOne.value) // 2
-
-      writePulsOne.value = 1
-      console.log('writePulsOne: ',writePulsOne.value) // 1
-      console.log('count: ', count.value) // 0 <----- setter 方法中对 count 进行修改
-
-      
-      count.value = 200
-      console.log('writePulsOne: ', writePulsOne.value)
-      return {count, writePulsOne, pulsOne}
+  console.log('---------------------------- setter / getter ---------------------')
+  // computed 只有 getter 方法，无法修改 count
+  const writePulsOne = computed({
+    get: () => count.value + 1,
+    set: val => {
+      count.value = val - 1
     }
-  }).mount('#app')
+  })
+  console.log('writePulsOne: ',writePulsOne.value) // 2
+
+  writePulsOne.value = 1
+  console.log('writePulsOne: ',writePulsOne.value) // 1
+  console.log('count: ', count.value) // 0 <----- setter 方法中对 count 进行修改
+
+  
+  count.value = 200
+  console.log('writePulsOne: ', writePulsOne.value)
+
+  console.log('-------------------- watchEffect ------------------------')
+
+  // 首先立即运行一个函数，在依赖更改时重新运行。
+  watchEffect(() => console.log('watchEffect: ', count.value))
+
+  setTimeout(() => {
+    count.value ++ 
+  }, 1000);
+
+  console.log('------------------------- watch -----------------------')
+
+  const state = reactive({count: 0})
+  watch(() => state.count, (count, prevCount) => {
+    console.log('侦听一个 getter ')
+    console.log('watch -> count, pervCount: ', count, prevCount)
+  }) 
+  setTimeout(() => {
+    state.count ++
+  }, 1000);
+  
+  // watch 可以在 count 修改之后监听到
+  watch(count, (count, prevCount) => {
+    console.log('侦听一个 ref')
+    console.log('watch ref --> count', count, prevCount)
+  })
 
 </script>
