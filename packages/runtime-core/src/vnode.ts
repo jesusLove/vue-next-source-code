@@ -366,6 +366,7 @@ function _createVNode(
   }
 
   // encode the vnode type information into a bitmap
+  // 对 VNode 类型信息编码
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
     : __FEATURE_SUSPENSE__ && isSuspense(type)

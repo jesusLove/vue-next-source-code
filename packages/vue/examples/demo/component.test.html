@@ -1,0 +1,12 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app">
+  <button @click="addValue">Add 1</button>
+  <span>{{count}}</span>
+</div>
+
+<script>
+  const {createApp, ref} = Vue
+
+  createApp({}).mount('#app')
+</script>

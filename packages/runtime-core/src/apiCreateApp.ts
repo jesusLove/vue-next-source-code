@@ -119,11 +119,12 @@ export type CreateAppFunction<HostElement> = (
 ) => App<HostElement>
 
 let uid = 0
-
+// 创建 App
 export function createAppAPI<HostElement>(
   render: RootRenderFunction,
   hydrate?: RootHydrateFunction
 ): CreateAppFunction<HostElement> {
+  // 返回 createApp 函数
   return function createApp(rootComponent, rootProps = null) {
     if (rootProps != null && !isObject(rootProps)) {
       __DEV__ && warn(`root props passed to app.mount() must be an object.`)
@@ -134,7 +135,7 @@ export function createAppAPI<HostElement>(
     const installedPlugins = new Set()
 
     let isMounted = false
-
+    // app 对象，定义一些方法和属性
     const app: App = (context.app = {
       _uid: uid++,
       _component: rootComponent as ConcreteComponent,
@@ -223,15 +224,19 @@ export function createAppAPI<HostElement>(
         context.directives[name] = directive
         return app
       },
-
+      // 支持跨平台渲染，所以该 mount 是可以跨平台的
+      // 标准的跨平台流程
       mount(rootContainer: HostElement, isHydrate?: boolean): any {
         if (!isMounted) {
+          // 1. 创建 VNode，根组件
+          // 对抽象事物的描述
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
           )
           // store app context on the root VNode.
           // this will be set on the root instance on initial mount.
+          // 保存 app 上下文到根节点中
           vnode.appContext = context
 
           // HMR root reload
@@ -244,6 +249,7 @@ export function createAppAPI<HostElement>(
           if (isHydrate && hydrate) {
             hydrate(vnode as VNode<Node, Element>, rootContainer as any)
           } else {
+            // 2. 渲染 Node 到 容器中
             render(vnode, rootContainer)
           }
           isMounted = true

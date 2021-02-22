@@ -172,6 +172,7 @@ export function shallowReadonly<T extends object>(
   )
 }
 
+// 创建 Proxy 对象
 function createReactiveObject(
   target: Target,
   isReadonly: boolean,

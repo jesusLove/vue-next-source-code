@@ -113,7 +113,7 @@ function createGetter(isReadonly = false, shallow = false) {
     if (!isReadonly) {
       track(target, TrackOpTypes.GET, key)
     }
-
+    // 浅层处理，直接返回 res，不进行 reactive 操作。
     if (shallow) {
       return res
     }
@@ -174,7 +174,7 @@ function createSetter(shallow = false) {
     return result
   }
 }
-
+// vue3.0 对象的 delete 操作可以进行拦截
 function deleteProperty(target: object, key: string | symbol): boolean {
   const hadKey = hasOwn(target, key)
   const oldValue = (target as any)[key]
@@ -184,7 +184,7 @@ function deleteProperty(target: object, key: string | symbol): boolean {
   }
   return result
 }
-
+// 对 in 操作进行拦截
 function has(target: object, key: string | symbol): boolean {
   const result = Reflect.has(target, key)
   if (!isSymbol(key) || !builtInSymbols.has(key)) {

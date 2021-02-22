@@ -516,7 +516,7 @@ export function validateComponentName(name: string, config: AppConfig) {
 }
 
 export let isInSSRComponentSetup = false
-
+// 初始化组件
 export function setupComponent(
   instance: ComponentInternalInstance,
   isSSR = false
@@ -525,6 +525,7 @@ export function setupComponent(
 
   const { props, children, shapeFlag } = instance.vnode
   const isStateful = shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+  // 初始化 Props / Slots
   initProps(instance, props, isStateful, isSSR)
   initSlots(instance, children)
 

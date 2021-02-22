@@ -1,0 +1,106 @@
+<script src="../../dist/vue.global.js"></script>
+
+<div id="app"></div>
+
+<script>
+  const {createApp, reactive, watchEffect, h} = Vue
+
+  // 使用渲染函数代替模板
+  const app = createApp({
+    data() {
+      return {
+        items: [{name: 'lee'}, {name: 'wang'}],
+      }
+    },
+    template: `<h-div msg="哈哈"/>`,
+    // render() {
+    //   // 1. h 函数基本用法
+    //   // return h(
+    //   //   'anchored-heading',
+    //   //   {
+    //   //     level: 1
+    //   //   },
+    //   //   'This is Level 1'
+    //   // )
+    //   // 2. VNode 的唯一性
+    //   // const myVNode = h('p', 'Hello, world')
+    //   // return h('div', [
+    //   //   myVNode, myVNode // <--- 实际是科技使用
+    //   // ])
+    //   // 3. 使用创建多个 VNode
+    //   // return h('div',
+    //   //   Array.from({length: 20}).map(() => {
+    //   //     return h('p', 'he')
+    //   //   })
+    //   // )
+    //   // 4. 使用 v-if 和 v-for
+    //   // if (this.items.length) {
+    //   //   return h('ul', this.items.map(item => {
+    //   //     return h('li', item.name)
+    //   //   }))
+    //   // } else {
+    //   //   return h('p', 'No items found.')
+    //   // }
+    //   // 5. v-on
+    //   // return h('div', {
+    //   //   onClick: $event => console.log('clicked', $event.target)
+    //   // }, 'AAAA')
+    //   // 6. slot
+      
+    // }
+  })
+  app.component('h-div', {
+    props: ['msg'],
+    render(){
+      const div = h('div', {}, [this.$slots.default({
+        text: this.msg
+      })])
+      console.log(div)
+      return div
+    }
+  })
+
+  app.component('anchored-heading', {
+  //   template: `
+  //   <h1 v-if="level === 1">
+  //     <slot></slot>
+  //   </h1>
+  //   <h2 v-else-if="level === 2">
+  //     <slot></slot>
+  //   </h2>
+  //   <h3 v-else-if="level === 3">
+  //     <slot></slot>
+  //   </h3>
+  //   <h4 v-else-if="level === 4">
+  //     <slot></slot>
+  //   </h4>
+  //   <h5 v-else-if="level === 5">
+  //     <slot></slot>
+  //   </h5>
+  //   <h6 v-else-if="level === 6">
+  //     <slot></slot>
+  //   </h6>
+  // `,
+  // 使用 render 函数
+  render() {
+    return h(
+      'h' + this.level, // tag name
+      [
+        h(
+          'a',
+          {
+            href: '#a'
+          },
+          this.$slots.default()
+        )
+      ])
+  },
+  props: {
+    level: {
+      type: Number,
+      required: true
+    }
+  }
+  })
+  app.mount('#app')
+</script>

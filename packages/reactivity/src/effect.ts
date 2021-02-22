@@ -21,6 +21,7 @@ type KeyToDepMap = Map<any, Dep>
 const targetMap = new WeakMap<any, KeyToDepMap>()
 //  effect 对象接口
 export interface ReactiveEffect<T = any> {
+  // 一个函数类型，无参数，返回泛型 T
   (): T
   _isEffect: true
   id: number
@@ -32,7 +33,7 @@ export interface ReactiveEffect<T = any> {
 }
 // effection 配置
 export interface ReactiveEffectOptions {
-  lazy?: boolean // 懒加载，为 true 不会立即执行
+  lazy?: boolean // 懒加载，为 true 时， effect不会立即执行
   scheduler?: (job: ReactiveEffect) => void // 调度函数
   onTrack?: (event: DebuggerEvent) => void // 跟踪是触发
   onTrigger?: (event: DebuggerEvent) => void // 响应触发
@@ -90,6 +91,7 @@ export function effect<T = any>(
 }
 
 export function stop(effect: ReactiveEffect) {
+  // 如果 active 为 true ,触发 effect.onStop，并把 active 设置为 false。
   if (effect.active) {
     cleanup(effect)
     if (effect.options.onStop) {
@@ -136,6 +138,11 @@ function createReactiveEffect<T = any>(
 }
 
 // 清除，deps 中 对象对应的 effect 属性的值。
+// targetMap 中存放一个 Map 数据，称为响应依赖映射
+// 那问题来了，effect为什么要存着这么个递归数据呢？这是因为要通过cleanup方法，
+// 在自己被执行前，把自己从响应依赖映射中删除了。然后执行自身原始函数fn，
+// 然后触发数据的get，然后触发track，然后又会把本effect添加到相应的Set<ReactiveEffect>中。
+// 有点儿神奇啊，每次执行前，把自己从依赖映射中删除，执行过程中，又把自己加回去。
 function cleanup(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {

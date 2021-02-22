@@ -445,6 +445,8 @@ function baseCreateRenderer(
 
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
+  // 挂载 DOM 或者 更新 DOM
+  // n1 旧节点，n2 新节点，container 挂载容器
   const patch: PatchFn = (
     n1,
     n2,
@@ -496,6 +498,7 @@ function baseCreateRenderer(
         break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 处理普通元素
           processElement(
             n1,
             n2,
@@ -507,6 +510,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          // 组件处理
           processComponent(
             n1,
             n2,
@@ -651,7 +655,7 @@ function baseCreateRenderer(
     }
     hostRemove(anchor!)
   }
-
+  // 处理 Element
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -664,6 +668,7 @@ function baseCreateRenderer(
   ) => {
     isSVG = isSVG || (n2.type as string) === 'svg'
     if (n1 == null) {
+      // 1. 不存在旧 Node，挂载 Element
       mountElement(
         n2,
         container,
@@ -674,10 +679,12 @@ function baseCreateRenderer(
         optimized
       )
     } else {
+      // 2. 进行 Element patch
       patchElement(n1, n2, parentComponent, parentSuspense, isSVG, optimized)
     }
   }
-
+  // 挂载元素
+  // 创建 DOM 元素节点；处理 Props; 处理 children；挂载节点到DOM中
   const mountElement = (
     vnode: VNode,
     container: RendererElement,
@@ -698,6 +705,7 @@ function baseCreateRenderer(
       patchFlag,
       dirs
     } = vnode
+    // 1. 创建 DOM 元素
     if (
       !__DEV__ &&
       vnode.el &&
@@ -718,9 +726,12 @@ function baseCreateRenderer(
 
       // mount children first, since some props may rely on child content
       // being already rendered, e.g. `<select value>`
+      // 处理子节点
       if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+        // 如果是 文本
         hostSetElementText(el, vnode.children as string)
       } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // 如果是数组
         mountChildren(
           vnode.children as VNodeArrayChildren,
           el,
@@ -736,9 +747,11 @@ function baseCreateRenderer(
         invokeDirectiveHook(vnode, null, parentComponent, 'created')
       }
       // props
+      // 2. 处理 Props
       if (props) {
         for (const key in props) {
           if (!isReservedProp(key)) {
+            // 给 DOM 节点添加相关的 class,style,event等属性。
             hostPatchProp(
               el,
               key,
@@ -781,6 +794,7 @@ function baseCreateRenderer(
     if (needCallTransitionHooks) {
       transition!.beforeEnter(el)
     }
+    // 4. 挂载节点
     hostInsert(el, container, anchor)
     if (
       (vnodeHook = props && props.onVnodeMounted) ||
@@ -826,7 +840,7 @@ function baseCreateRenderer(
       }
     }
   }
-
+  // 递归挂载子元素
   const mountChildren: MountChildrenFn = (
     children,
     container,
@@ -1184,7 +1198,7 @@ function baseCreateRenderer(
       }
     }
   }
-
+  // 处理组件
   const processComponent = (
     n1: VNode | null,
     n2: VNode,
@@ -1205,6 +1219,7 @@ function baseCreateRenderer(
           optimized
         )
       } else {
+        // 1. 挂载组件
         mountComponent(
           n2,
           container,
@@ -1216,19 +1231,21 @@ function baseCreateRenderer(
         )
       }
     } else {
+      // 2. 更新组件
       updateComponent(n1, n2, optimized)
     }
   }
-
+  // 挂载组件：创建组件实例 --> 设置组件实例 --> 运行带副作用的渲染函数
   const mountComponent: MountComponentFn = (
-    initialVNode,
-    container,
+    initialVNode, // VNode
+    container, // 容器
     anchor,
     parentComponent,
     parentSuspense,
     isSVG,
     optimized
   ) => {
+    // 1. 创建 组件 实例
     const instance: ComponentInternalInstance = (initialVNode.component = createComponentInstance(
       initialVNode,
       parentComponent,
@@ -1253,6 +1270,7 @@ function baseCreateRenderer(
     if (__DEV__) {
       startMeasure(instance, `init`)
     }
+    // 2. 初始化组件，建立 Proxy.
     setupComponent(instance)
     if (__DEV__) {
       endMeasure(instance, `init`)
@@ -1271,7 +1289,7 @@ function baseCreateRenderer(
       }
       return
     }
-
+    // 3. 建立一个渲染 effect，执行 effect。
     setupRenderEffect(
       instance,
       initialVNode,
@@ -1287,9 +1305,10 @@ function baseCreateRenderer(
       endMeasure(instance, `mount`)
     }
   }
-
+  // 更新组件
   const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
     const instance = (n2.component = n1.component)!
+    // 检验是否需要更新
     if (shouldUpdateComponent(n1, n2, optimized)) {
       if (
         __FEATURE_SUSPENSE__ &&
@@ -1317,6 +1336,7 @@ function baseCreateRenderer(
       }
     } else {
       // no update needed. just copy over properties
+      // 不用更新，直接覆盖即可
       n2.component = n1.component
       n2.el = n1.el
       instance.vnode = n2
@@ -1333,6 +1353,7 @@ function baseCreateRenderer(
     optimized
   ) => {
     // create reactive effect for rendering
+    // 创建一个渲染 effect。
     instance.update = effect(function componentEffect() {
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
@@ -1352,6 +1373,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `render`)
         }
+        // 创建组件内部的 VNode
         const subTree = (instance.subTree = renderComponentRoot(instance))
         if (__DEV__) {
           endMeasure(instance, `render`)
@@ -1515,6 +1537,7 @@ function baseCreateRenderer(
     flushPreFlushCbs(undefined, instance.update)
   }
 
+  // 子节点比较
   const patchChildren: PatchChildrenFn = (
     n1,
     n2,
@@ -1525,12 +1548,14 @@ function baseCreateRenderer(
     isSVG,
     optimized = false
   ) => {
+    // 获取新旧节点的子节点
     const c1 = n1 && n1.children
     const prevShapeFlag = n1 ? n1.shapeFlag : 0
     const c2 = n2.children
 
     const { patchFlag, shapeFlag } = n2
     // fast path
+    // 子节点有 Key
     if (patchFlag > 0) {
       if (patchFlag & PatchFlags.KEYED_FRAGMENT) {
         // this could be either fully-keyed or mixed (some keyed some not)
@@ -1548,6 +1573,7 @@ function baseCreateRenderer(
         return
       } else if (patchFlag & PatchFlags.UNKEYED_FRAGMENT) {
         // unkeyed
+        // 没有key
         patchUnkeyedChildren(
           c1 as VNode[],
           c2 as VNodeArrayChildren,
@@ -1563,8 +1589,10 @@ function baseCreateRenderer(
     }
 
     // children has 3 possibilities: text, array or no children.
+    // 子节点三种可能：文本，数组，没有子节点
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       // text children fast path
+      // 卸载旧的设置新的
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         unmountChildren(c1 as VNode[], parentComponent, parentSuspense)
       }
@@ -1612,6 +1640,7 @@ function baseCreateRenderer(
     }
   }
 
+  // 无 Key
   const patchUnkeyedChildren = (
     c1: VNode[],
     c2: VNodeArrayChildren,
@@ -1626,8 +1655,10 @@ function baseCreateRenderer(
     c2 = c2 || EMPTY_ARR
     const oldLength = c1.length
     const newLength = c2.length
+    // 最小长度
     const commonLength = Math.min(oldLength, newLength)
     let i
+    // 遍历进行 patch
     for (i = 0; i < commonLength; i++) {
       const nextChild = (c2[i] = optimized
         ? cloneIfMounted(c2[i] as VNode)
@@ -1669,6 +1700,7 @@ function baseCreateRenderer(
   }
 
   // can be all-keyed or mixed
+  // diff 算法的核心方法
   const patchKeyedChildren = (
     c1: VNode[],
     c2: VNodeArrayChildren,
@@ -1684,7 +1716,7 @@ function baseCreateRenderer(
     let e1 = c1.length - 1 // prev ending index
     let e2 = l2 - 1 // next ending index
 
-    // 1. sync from start
+    // 1. sync form start
     // (a b) c
     // (a b) d e
     while (i <= e1 && i <= e2) {
@@ -2185,16 +2217,19 @@ function baseCreateRenderer(
     }
     return hostNextSibling((vnode.anchor || vnode.el)!)
   }
-
+  // 渲染创建好的 VNode
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode == null) {
+      // 销毁组件
       if (container._vnode) {
         unmount(container._vnode, null, null, true)
       }
     } else {
+      // 创建或者更新组件
       patch(container._vnode || null, vnode, container)
     }
     flushPostFlushCbs()
+    // 缓存 VNode 节点，表示已经渲染
     container._vnode = vnode
   }
 
