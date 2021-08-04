@@ -173,6 +173,12 @@ export function shallowReadonly<T extends object>(
 }
 
 // 创建 Proxy 对象
+// 1. target 必须是对象或者数组。
+// 2. 已经是响应式对象，执行该函数后还是响应式对象。
+// 3. 对同一个对象多次执行 reactive，应该返回相同的响应式对象。
+// 4. 对 target 对象进行限制，白名单中的对象才可以为响应式对象。
+// 5. Proxy 劫持 target 对象，返回响应式对象。
+// 6. 给原始数据打上标识，多次 target 返回相同的响应式对象。
 function createReactiveObject(
   target: Target,
   isReadonly: boolean,

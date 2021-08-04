@@ -69,10 +69,15 @@ const arrayInstrumentations: Record<string, Function> = {}
   }
 })
 
-// Get 拦截器
+// Get 拦截器，数据访问阶段
 // 进行 track ，依赖收集。
 function createGetter(isReadonly = false, shallow = false) {
   // 三个参数：目标对象，属性名、proxy实例本身（操作行为所针对的对象）
+  // 1. 特殊的 Key 做代理
+  // 2. target 是数组，命中了 arrayInstrumentations
+  // 3. Refect.get 进行求值
+  // 4. 对计算的值 res 进行判断，如果是数组或对象，则递归执行 reactive 把 res 编程响应式对象。
+  // Proxy 只劫持对象本身，并不会劫持子对象的变化
   return function get(target: Target, key: string | symbol, receiver: object) {
     // 1. 对 __v_isReactive 属性对应的值。true: 表示该 target 响应的 proxy。
     // 进行 isReactive 方法会走该判断

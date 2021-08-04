@@ -172,6 +172,8 @@ export function resetTracking() {
   shouldTrack = last === undefined ? true : last
 }
 
+// 收集依赖：数据变化后执行的 副作用 函数
+// target -> key -> [effect]
 export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
@@ -203,7 +205,11 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
     }
   }
 }
-
+// 根据 target 和 key 从 targetMap 中找到相关的所有副作用函数遍历执行一遍。
+// 1. 通过 target 拿到target依赖集合 depsMap。
+// 2. 创建运行 effects 集合
+// 3. 根据 key 在 depsMap 集合中找到对应的 effect 集合，添加到 effects 集合。
+// 4. 遍历 effects 执行相关的 副作用effect。
 export function trigger(
   target: object,
   type: TriggerOpTypes,
