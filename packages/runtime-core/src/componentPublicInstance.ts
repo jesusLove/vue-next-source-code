@@ -239,7 +239,12 @@ export interface ComponentRenderContext {
   [key: string]: any
   _: ComponentInternalInstance
 }
-
+// ! 渲染上下文代理 handlers 
+// ? accessCache 的作用？
+// 读取对象属性值时，每次都要判断 key 是否存在 hasOwn。引入 accessCache 之后。
+// 第一次获取 key 对应的数据后，利用 accessCache 去缓存数据。
+// 下次再次根据 key 查询数据，直接通过 accessCache[key] 获取对应的值，
+// 而不用依次调用 hasOwn 去判断。
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   get({ _: instance }: ComponentRenderContext, key: string) {
     const {
@@ -270,6 +275,8 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     // prototype) to memoize what access type a key corresponds to.
     let normalizedProps
     if (key[0] !== '$') {
+      // 读取缓存
+      // setupState / data / props / ctx
       const n = accessCache![key]
       if (n !== undefined) {
         switch (n) {
@@ -308,6 +315,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     const publicGetter = publicPropertiesMap[key]
     let cssModule, globalProperties
     // public $xxx properties
+    // 公开的 $xxx 属性和
     if (publicGetter) {
       if (key === '$attrs') {
         track(instance, TrackOpTypes.GET, key)
@@ -316,16 +324,19 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       return publicGetter(instance)
     } else if (
       // css module (injected by vue-loader)
+      // css 模块，通过 vue-loader 编译的使用注入
       (cssModule = type.__cssModules) &&
       (cssModule = cssModule[key])
     ) {
       return cssModule
     } else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
       // user may set custom properties to `this` that start with `$`
+      // 用户自定义的属性，也用 $ 开头
       accessCache![key] = AccessTypes.CONTEXT
       return ctx[key]
     } else if (
       // global properties
+      // 全局定义的属性
       ((globalProperties = appContext.config.globalProperties),
       hasOwn(globalProperties, key))
     ) {
@@ -357,7 +368,8 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       }
     }
   },
-
+  // ? 赋顺序：setupState > data > ctx
+  // ? props 无法修改
   set(
     { _: instance }: ComponentRenderContext,
     key: string,
@@ -365,8 +377,10 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   ): boolean {
     const { data, setupState, ctx } = instance
     if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+      // 给 setupState 赋值
       setupState[key] = value
     } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      // 给 data 赋值
       data[key] = value
     } else if (key in instance.props) {
       __DEV__ &&
@@ -392,12 +406,13 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
           value
         })
       } else {
+        // 用户自定义数据赋值
         ctx[key] = value
       }
     }
     return true
   },
-
+  // 依次判断属性是否存在
   has(
     {
       _: { data, setupState, accessCache, ctx, appContext, propsOptions }

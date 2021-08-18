@@ -414,26 +414,44 @@ export function createComponentInstance(
     (parent ? parent.appContext : vnode.appContext) || emptyAppContext
 
   const instance: ComponentInternalInstance = {
+    // 组件唯一 ID
     uid: uid++,
+    // 组件 vnode
     vnode,
+    // VNode节点类型
     type,
+    // 父组件实例
     parent,
+    // app 上下文
     appContext,
+    // 根组件实例
     root: null!, // to be immediately set
+    // 新的组件 VNode
     next: null,
+    // 子组件 vnode
     subTree: null!, // will be set synchronously right after creation
+    // 带副作用更新函数
     update: null!, // will be set synchronously right after creation
+    // 渲染函数
     render: null,
+    // 渲染上下文代理
     proxy: null,
     exposed: null,
+    // 带有 with 区块的渲染上下文代理
     withProxy: null,
+    // 响应式相关对象
     effects: null,
+    // 依赖注入相关
     provides: parent ? parent.provides : Object.create(appContext.provides),
+    // 渲染代理的属性访问缓存
     accessCache: null!,
+    // 渲染缓存
     renderCache: [],
 
     // local resovled assets
+    // 注册组件
     components: null,
+    // 注册命令
     directives: null,
 
     // resolved props and emits options
@@ -441,50 +459,74 @@ export function createComponentInstance(
     emitsOptions: normalizeEmitsOptions(type, appContext),
 
     // emit
+    // 派发事件相关
     emit: null as any, // to be set immediately
     emitted: null,
 
     // state
+    // 渲染上下文
     ctx: EMPTY_OBJ,
     data: EMPTY_OBJ,
     props: EMPTY_OBJ,
-    attrs: EMPTY_OBJ,
-    slots: EMPTY_OBJ,
-    refs: EMPTY_OBJ,
-    setupState: EMPTY_OBJ,
+    attrs: EMPTY_OBJ, // 普通属性
+    slots: EMPTY_OBJ, // 插槽
+    refs: EMPTY_OBJ, // ref 引用
+    setupState: EMPTY_OBJ, // setup 函数返回的响应式结果
+    // setup 函数上下文
     setupContext: null,
 
     // suspense related
     suspense,
     suspenseId: suspense ? suspense.pendingId : 0,
+    // suspense异步依赖
     asyncDep: null,
+    // suspense 异步依赖是否都已处理
     asyncResolved: false,
 
     // lifecycle hooks
     // not using enums here because it results in computed properties
+    // 是否挂载
     isMounted: false,
+    // 是否卸载
     isUnmounted: false,
+    // 是否激活
     isDeactivated: false,
+    // 生命周期 before create
     bc: null,
+    // created
     c: null,
+    // before mount
     bm: null,
+    // mounted
     m: null,
+    // before update
     bu: null,
+    // update
     u: null,
+    // unmounted
     um: null,
+    // before unmount
     bum: null,
+    // deactivated
     da: null,
+    // activated
     a: null,
+    // render triggered
     rtg: null,
+    // render tracked
     rtc: null,
+    // error captured
     ec: null
   }
+  // 初始化渲染上下文
   if (__DEV__) {
     instance.ctx = createRenderContext(instance)
   } else {
     instance.ctx = { _: instance }
   }
+  // 初始化根组件指针
   instance.root = parent ? parent.root : instance
+  // 初始化派发事件
   instance.emit = emit.bind(null, instance)
 
   if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
@@ -517,9 +559,13 @@ export function validateComponentName(name: string, config: AppConfig) {
 }
 
 export let isInSSRComponentSetup = false
-// ! 初始化组件
+// ! 组件实例的设置流程
 // * 初始化 Props / Slots
 // * 如果是有状态组件，设置后
+// ? 为什么创建渲染上下文代理？
+// Vue3.0 中将不同数据存储在不同属性中例如：data、props、ctx等，
+// 执行组件渲染的时候，直接访问渲染上下文 instance.ctx 中的属性，通过 proxy 代理到
+// 对 data、ctx、props 等数据的访问和修改。
 export function setupComponent(
   instance: ComponentInternalInstance,
   isSSR = false
@@ -527,11 +573,12 @@ export function setupComponent(
   isInSSRComponentSetup = isSSR
 
   const { props, children, shapeFlag } = instance.vnode
+  // ? 判断是否时有状态组件
   const isStateful = shapeFlag & ShapeFlags.STATEFUL_COMPONENT
   // ? 初始化 Props / Slots
   initProps(instance, props, isStateful, isSSR)
   initSlots(instance, children)
-  // ? 有状态组件处理
+  // ? 设置有状态组件实例
   const setupResult = isStateful
     ? setupStatefulComponent(instance, isSSR)
     : undefined
@@ -539,7 +586,6 @@ export function setupComponent(
   return setupResult
 }
 // ! 设置有状态组件
-//
 function setupStatefulComponent(
   instance: ComponentInternalInstance,
   isSSR: boolean
@@ -564,21 +610,27 @@ function setupStatefulComponent(
     }
   }
   // 0. create render proxy property access cache
+  // ? 0. 创建渲染代理的属性访问缓存
   instance.accessCache = Object.create(null)
   // 1. create public instance / render proxy
   // also mark it raw so it's never observed
+  // ? 1. 创建渲染上下文代理
   instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers)
   if (__DEV__) {
     exposePropsOnRenderContext(instance)
   }
   // 2. call setup()
+  // ? 2. 判断处理 setup 函数
   const { setup } = Component
   if (setup) {
+    // 如果 setup 函数有参数，则创建一个 setupContext
+    // setup 参数长度大于 1
     const setupContext = (instance.setupContext =
       setup.length > 1 ? createSetupContext(instance) : null)
 
     currentInstance = instance
     pauseTracking()
+    // 执行 setup 函数，获取结果
     const setupResult = callWithErrorHandling(
       setup,
       instance,
@@ -587,7 +639,7 @@ function setupStatefulComponent(
     )
     resetTracking()
     currentInstance = null
-
+    // 处理 setup 执行结果
     if (isPromise(setupResult)) {
       if (isSSR) {
         // return the promise so server-renderer can wait on it
@@ -752,7 +804,7 @@ const attrHandlers: ProxyHandler<Data> = {
     return false
   }
 }
-
+// ! 创建 setup 上下文
 export function createSetupContext(
   instance: ComponentInternalInstance
 ): SetupContext {
