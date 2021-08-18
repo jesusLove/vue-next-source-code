@@ -388,6 +388,7 @@ export const setRef = (
  * })
  * ```
  */
+// ! 创建渲染器入口 **
 export function createRenderer<
   HostNode = RendererNode,
   HostElement = RendererElement
@@ -417,6 +418,7 @@ function baseCreateRenderer(
 ): HydrationRenderer
 
 // implementation
+// ! 创建渲染器实现函数
 function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions
@@ -555,22 +557,27 @@ function baseCreateRenderer(
       setRef(ref, n1 && n1.ref, parentSuspense, n2)
     }
   }
-
+  // ? 处理 文本
   const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
+    // * 没有旧节点
     if (n1 == null) {
+      // ! hostInsert 和 hostCreateText 与平台相关
+      // 创建 Text 并插入到 container 中
+      // n2.el 中缓存 DOM 节点
       hostInsert(
         (n2.el = hostCreateText(n2.children as string)),
         container,
         anchor
       )
     } else {
+      // 存在旧节点，重置内容
       const el = (n2.el = n1.el!)
       if (n2.children !== n1.children) {
         hostSetText(el, n2.children as string)
       }
     }
   }
-
+  // ? 注释 Node
   const processCommentNode: ProcessTextOrCommentFn = (
     n1,
     n2,
@@ -588,7 +595,7 @@ function baseCreateRenderer(
       n2.el = n1.el
     }
   }
-
+  // ? 挂载静态节点
   const mountStaticNode = (
     n2: VNode,
     container: RendererElement,
@@ -655,7 +662,7 @@ function baseCreateRenderer(
     }
     hostRemove(anchor!)
   }
-  // 处理 Element
+  // ? 处理 Element
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -668,6 +675,7 @@ function baseCreateRenderer(
   ) => {
     isSVG = isSVG || (n2.type as string) === 'svg'
     if (n1 == null) {
+      // * 挂载阶段
       // 1. 不存在旧 Node，挂载 Element
       mountElement(
         n2,
@@ -679,11 +687,12 @@ function baseCreateRenderer(
         optimized
       )
     } else {
+      // * 更新阶段
       // 2. 进行 Element patch
       patchElement(n1, n2, parentComponent, parentSuspense, isSVG, optimized)
     }
   }
-  // 挂载元素
+  // ! 挂载普通元素
   // 创建 DOM 元素节点；处理 Props; 处理 children；挂载节点到DOM中
   const mountElement = (
     vnode: VNode,
@@ -1108,7 +1117,8 @@ function baseCreateRenderer(
       }
     }
   }
-
+  // ? 处理 Fragment 片段
+  // * el 指向哪里？
   const processFragment = (
     n1: VNode | null,
     n2: VNode,
@@ -1133,7 +1143,7 @@ function baseCreateRenderer(
       optimized = false
       dynamicChildren = null
     }
-
+    // 挂载阶段
     if (n1 == null) {
       hostInsert(fragmentStartAnchor, container, anchor)
       hostInsert(fragmentEndAnchor, container, anchor)
@@ -1150,6 +1160,7 @@ function baseCreateRenderer(
         optimized
       )
     } else {
+      // 更新阶段
       if (
         patchFlag > 0 &&
         patchFlag & PatchFlags.STABLE_FRAGMENT &&
@@ -1235,7 +1246,7 @@ function baseCreateRenderer(
       updateComponent(n1, n2, optimized)
     }
   }
-  // 挂载组件：创建组件实例 --> 设置组件实例 --> 运行带副作用的渲染函数
+  // ! 挂载组件：创建组件实例 --> 设置组件实例 --> 运行带副作用的渲染函数
   const mountComponent: MountComponentFn = (
     initialVNode, // VNode
     container, // 容器
@@ -1245,7 +1256,7 @@ function baseCreateRenderer(
     isSVG,
     optimized
   ) => {
-    // 1. 创建 组件 实例
+    // ? 1. 创建 组件 实例
     const instance: ComponentInternalInstance = (initialVNode.component = createComponentInstance(
       initialVNode,
       parentComponent,
@@ -1270,7 +1281,9 @@ function baseCreateRenderer(
     if (__DEV__) {
       startMeasure(instance, `init`)
     }
-    // 2. 初始化组件，建立 Proxy.
+    // ? 2. 初始化组件，建立 Proxy.
+    // 初始化 Props / Slots
+    // 设置有状态组件
     setupComponent(instance)
     if (__DEV__) {
       endMeasure(instance, `init`)
@@ -1289,7 +1302,7 @@ function baseCreateRenderer(
       }
       return
     }
-    // 3. 建立一个渲染 effect，执行 effect。
+    // ? 3. 建立一个渲染 effect，执行 effect。
     setupRenderEffect(
       instance,
       initialVNode,
@@ -1305,7 +1318,7 @@ function baseCreateRenderer(
       endMeasure(instance, `mount`)
     }
   }
-  // 更新组件
+  // ! 更新组件
   const updateComponent = (n1: VNode, n2: VNode, optimized: boolean) => {
     const instance = (n2.component = n1.component)!
     // 检验是否需要更新
@@ -1700,7 +1713,8 @@ function baseCreateRenderer(
   }
 
   // can be all-keyed or mixed
-  // diff 算法的核心方法
+  // ! diff 算法的核心方法: 有 key 的子组件数组
+  // ! 采用双端对比
   const patchKeyedChildren = (
     c1: VNode[],
     c2: VNodeArrayChildren,
@@ -1715,7 +1729,7 @@ function baseCreateRenderer(
     const l2 = c2.length
     let e1 = c1.length - 1 // prev ending index
     let e2 = l2 - 1 // next ending index
-
+    // ? 1. 头部：如果相同调用 patch 方法
     // 1. sync form start
     // (a b) c
     // (a b) d e
@@ -1740,7 +1754,7 @@ function baseCreateRenderer(
       }
       i++
     }
-
+    // ? 2 尾部对比
     // 2. sync from end
     // a (b c)
     // d e (b c)
@@ -1767,6 +1781,8 @@ function baseCreateRenderer(
       e2--
     }
 
+    // ? 3. 对比共同序列后，挂载剩余的新节点
+    // ? 新节点有剩余
     // 3. common sequence + mount
     // (a b)
     // (a b) c
@@ -1794,7 +1810,8 @@ function baseCreateRenderer(
         }
       }
     }
-
+    // ? 4. 对比共同序列后，卸载多余的旧节点
+    // ? 旧节点有剩余
     // 4. common sequence + unmount
     // (a b) c
     // (a b)
@@ -1808,7 +1825,7 @@ function baseCreateRenderer(
         i++
       }
     }
-
+    // ? 6. 其他情况
     // 5. unknown sequence
     // [i ... e1 + 1]: a b [c d e] f g
     // [i ... e2 + 1]: a b [e d c h] f g
@@ -1818,6 +1835,7 @@ function baseCreateRenderer(
       const s2 = i // next starting index
 
       // 5.1 build key:index map for newChildren
+      // ? 5.1 创建一个 Map<key, index>，保存新 children.
       const keyToNewIndexMap: Map<string | number, number> = new Map()
       for (i = s2; i <= e2; i++) {
         const nextChild = (c2[i] = optimized
@@ -2207,7 +2225,6 @@ function baseCreateRenderer(
       unmount(children[i], parentComponent, parentSuspense, doRemove, optimized)
     }
   }
-
   const getNextHostNode: NextFn = vnode => {
     if (vnode.shapeFlag & ShapeFlags.COMPONENT) {
       return getNextHostNode(vnode.component!.subTree)
@@ -2225,7 +2242,7 @@ function baseCreateRenderer(
         unmount(container._vnode, null, null, true)
       }
     } else {
-      // 创建或者更新组件
+      // ! 创建或者更新组件
       patch(container._vnode || null, vnode, container)
     }
     flushPostFlushCbs()

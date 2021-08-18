@@ -1,4 +1,6 @@
 import { isObject, toRawType, def } from '@vue/shared'
+// ? 定义 Proxy 的 Handler 函数
+// ?
 import {
   mutableHandlers,
   readonlyHandlers,
@@ -12,21 +14,22 @@ import {
 } from './collectionHandlers'
 import { UnwrapRef, Ref } from './ref'
 
-// 响应标识
+// ? 响应标识: 枚举
 export const enum ReactiveFlags {
   SKIP = '__v_skip', // 对象条件该标识标识，永远不进行 Proxy 处理
   IS_REACTIVE = '__v_isReactive', // 是否为 Reactive
   IS_READONLY = '__v_isReadonly', // 是否为 Readonly
   RAW = '__v_raw' // 对应映射值
 }
-
+// ? 接口
 export interface Target {
   [ReactiveFlags.SKIP]?: boolean
   [ReactiveFlags.IS_REACTIVE]?: boolean
   [ReactiveFlags.IS_READONLY]?: boolean
   [ReactiveFlags.RAW]?: any
 }
-// 将 reactive 和 readonly 分开存储。
+// ? 使用 WeakMap 缓存响应对象
+// ? 将 reactive 和 readonly 分开存储。
 export const reactiveMap = new WeakMap<Target, any>()
 export const readonlyMap = new WeakMap<Target, any>()
 
@@ -172,7 +175,7 @@ export function shallowReadonly<T extends object>(
   )
 }
 
-// 创建 Proxy 对象
+// ! 创建 Proxy 对象
 // 1. target 必须是对象或者数组。
 // 2. 已经是响应式对象，执行该函数后还是响应式对象。
 // 3. 对同一个对象多次执行 reactive，应该返回相同的响应式对象。
@@ -185,14 +188,14 @@ function createReactiveObject(
   baseHandlers: ProxyHandler<any>,
   collectionHandlers: ProxyHandler<any>
 ) {
-  // target 必须为对象类型。
+  // ? target 必须为对象类型。
   if (!isObject(target)) {
     if (__DEV__) {
       console.warn(`value cannot be made reactive: ${String(target)}`)
     }
     return target
   }
-  // target is already a Proxy, return it.
+  // ? target is already a Proxy, return it.
   // exception: calling readonly() on a reactive object
   // target 已经是 proxy 直接返回
   if (
@@ -202,31 +205,31 @@ function createReactiveObject(
     return target
   }
   // target already has corresponding Proxy
-  // 已经有对应的 映射 Proxy 返回。
+  // ? 已经有对应的 映射 Proxy 返回。
   const proxyMap = isReadonly ? readonlyMap : reactiveMap
   const existingProxy = proxyMap.get(target)
   if (existingProxy) {
     return existingProxy
   }
   // only a whitelist of value types can be observed.
-  // 验证 target 类型是否为白名单中的类型。
+  // ? 验证 target 类型是否为白名单中的类型。
   const targetType = getTargetType(target)
   if (targetType === TargetType.INVALID) {
     return target
   }
-  // 创建 target 的 proxy。
+  // ? 创建 target 的 proxy。
   // proxy 第二个参数 handler，定义对象的拦截行为。
   // 关于 Proxy 参考 ：https://es6.ruanyifeng.com/#docs/proxy
   const proxy = new Proxy(
     target,
     targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
   )
-  // 缓存到 proxy 中，分别缓存到 readonlyMap  和 reactiveMap 中。
+  // ? 缓存到 proxy 中，分别缓存到 readonlyMap  和 reactiveMap 中。
   proxyMap.set(target, proxy)
   return proxy
 }
-// 检测是否是 reactive 创建的 Proxy 对象
-// 1. 如果是 Readonly 在读取 原始值 __v_row
+// ! 检测是否是 reactive 创建的 Proxy 对象
+// 1. 如果是 Readonly ，读取 原始值 __v_row
 // 2. !! 将目标值转为布尔值，直接获取 __v_isReactive 属性值
 export function isReactive(value: unknown): boolean {
   if (isReadonly(value)) {
@@ -234,24 +237,24 @@ export function isReactive(value: unknown): boolean {
   }
   return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE])
 }
-// 检测是否是 readonly 创建的 Proxy 对象
+// ! 检测是否是 readonly 创建的 Proxy 对象
 // 直接获取 __v_isReadonly 属性的布尔值。
 export function isReadonly(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_READONLY])
 }
-// 检测是否是 Proxy 对象
+// ! 检测是否是 Proxy 对象
 // 符合 isReactive 或者 isReadonly
 export function isProxy(value: unknown): boolean {
   return isReactive(value) || isReadonly(value)
 }
-// 返回 reactive 或 readonly proxy 的原始对象
+// ! 返回 reactive 或 readonly proxy 的原始对象
 // 用于临时读取，不会引起 proxy 访问/跟踪开销。
 export function toRaw<T>(observed: T): T {
   return (
     (observed && toRaw((observed as Target)[ReactiveFlags.RAW])) || observed
   )
 }
-// 标记一个对象永远不会转为 Proxy.
+// ! 标记一个对象永远不会转为 Proxy.
 export function markRaw<T extends object>(value: T): T {
   def(value, ReactiveFlags.SKIP, true)
   return value

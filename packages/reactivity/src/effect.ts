@@ -1,6 +1,6 @@
-// 引入枚举类型：用来表示 Track 和 trigger 的类型。
+// ? 引入枚举类型：用来表示 Track 和 trigger 的类型。
 import { TrackOpTypes, TriggerOpTypes } from './operations'
-// 一些辅助方法
+// ? 一些辅助方法
 import { EMPTY_OBJ, isArray, isIntegerKey, isMap } from '@vue/shared'
 
 // The main WeakMap that stores {target -> key -> dep} connections.
@@ -66,7 +66,7 @@ export function isEffect(fn: any): fn is ReactiveEffect {
   return fn && fn._isEffect === true
 }
 
-// 1. 创建一个 effect, 非懒加载 立即执行一次
+// ! 1. 创建一个 effect, 非懒加载 立即执行一次
 /**
  *
  * @param fn 方法
@@ -103,7 +103,7 @@ export function stop(effect: ReactiveEffect) {
 
 let uid = 0
 
-// 创建 effect
+// ! 创建 effect
 function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
@@ -114,7 +114,7 @@ function createReactiveEffect<T = any>(
     }
     if (!effectStack.includes(effect)) {
       cleanup(effect) // 清空 deps 对 effect 的依赖
-      // try ... finally ：finally 中的无聊是否抛出异常，都会执行。
+      // try ... finally ：finally 中是否抛出异常，都会执行。
       try {
         enableTracking()
         effectStack.push(effect) // 缓存 effect
@@ -140,7 +140,7 @@ function createReactiveEffect<T = any>(
 // 清除，deps 中 对象对应的 effect 属性的值。
 // targetMap 中存放一个 Map 数据，称为响应依赖映射
 // 那问题来了，effect为什么要存着这么个递归数据呢？这是因为要通过cleanup方法，
-// 在自己被执行前，把自己从响应依赖映射中删除了。然后执行自身原始函数fn，
+// 在被执行前，把自己从响应依赖映射中删除了。然后执行自身原始函数fn，
 // 然后触发数据的get，然后触发track，然后又会把本effect添加到相应的Set<ReactiveEffect>中。
 // 有点儿神奇啊，每次执行前，把自己从依赖映射中删除，执行过程中，又把自己加回去。
 function cleanup(effect: ReactiveEffect) {
@@ -172,7 +172,7 @@ export function resetTracking() {
   shouldTrack = last === undefined ? true : last
 }
 
-// 收集依赖：数据变化后执行的 副作用 函数
+// ! 收集依赖：数据变化后执行的 副作用 函数
 // target -> key -> [effect]
 export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {

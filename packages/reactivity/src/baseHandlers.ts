@@ -1,3 +1,4 @@
+// ? 响应式
 import {
   reactive,
   readonly,
@@ -7,7 +8,11 @@ import {
   readonlyMap,
   reactiveMap
 } from './reactive'
+
+// ? 跟踪和触发类型
 import { TrackOpTypes, TriggerOpTypes } from './operations'
+
+// ? 副作用
 import {
   track,
   trigger,
@@ -15,6 +20,8 @@ import {
   pauseTracking,
   resetTracking
 } from './effect'
+
+// ? 辅助工具
 import {
   isObject,
   hasOwn,
@@ -59,6 +66,7 @@ const arrayInstrumentations: Record<string, Function> = {}
 })
 // instrument length-altering mutation methods to avoid length being tracked
 // which leads to infinite loops in some cases (#2137)
+// ? 避免 track 长度的变化，导致无限循环。
 ;(['push', 'pop', 'shift', 'unshift', 'splice'] as const).forEach(key => {
   const method = Array.prototype[key] as any
   arrayInstrumentations[key] = function(this: unknown[], ...args: unknown[]) {
@@ -69,22 +77,21 @@ const arrayInstrumentations: Record<string, Function> = {}
   }
 })
 
-// Get 拦截器，数据访问阶段
-// 进行 track ，依赖收集。
+// ! Getter 拦截器，数据访问阶段进行 track ，依赖收集。
 function createGetter(isReadonly = false, shallow = false) {
-  // 三个参数：目标对象，属性名、proxy实例本身（操作行为所针对的对象）
+  // ! 三个参数：目标对象，属性名、proxy实例本身（操作行为所针对的对象）
   // 1. 特殊的 Key 做代理
   // 2. target 是数组，命中了 arrayInstrumentations
   // 3. Refect.get 进行求值
   // 4. 对计算的值 res 进行判断，如果是数组或对象，则递归执行 reactive 把 res 编程响应式对象。
   // Proxy 只劫持对象本身，并不会劫持子对象的变化
   return function get(target: Target, key: string | symbol, receiver: object) {
-    // 1. 对 __v_isReactive 属性对应的值。true: 表示该 target 响应的 proxy。
-    // 进行 isReactive 方法会走该判断
+    // 1. __v_isReactive 属性值为 true: 表示该 target 响应的 proxy。
+    // 调用 isReactive 方法会走该判断
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
     } else if (key === ReactiveFlags.IS_READONLY) {
-      // __v_isReadonly 属性对应的值。
+      //调用 isReadonly 方法会走这个判断。
       return isReadonly
     } else if (
       key === ReactiveFlags.RAW &&
@@ -125,14 +132,16 @@ function createGetter(isReadonly = false, shallow = false) {
     // res 为 ref 对象时，进行
     if (isRef(res)) {
       // ref unwrapping - does not apply for Array + integer key.
+      // ref 解包，不适用于 Array + 整数 key
       const shouldUnwrap = !targetIsArray || !isIntegerKey(key)
       return shouldUnwrap ? res.value : res
     }
-
+    // 返回值是否为对象
     if (isObject(res)) {
       // Convert returned value into a proxy as well. we do the isObject check
       // here to avoid invalid value warning. Also need to lazy access readonly
       // and reactive here to avoid circular dependency.
+      // 将返回值转为 Proxy，惰性访问
       return isReadonly ? readonly(res) : reactive(res)
     }
 
@@ -142,7 +151,7 @@ function createGetter(isReadonly = false, shallow = false) {
 
 const set = /*#__PURE__*/ createSetter()
 const shallowSet = /*#__PURE__*/ createSetter(true)
-
+// ! Setter: 主要任务 trigger
 function createSetter(shallow = false) {
   // set方法用来拦截某个属性的赋值操作，可以接受四个参数，依次为目标对象、属性名、属性值和 Proxy 实例本身，其中最后一个参数可选。
   return function set(
@@ -151,7 +160,9 @@ function createSetter(shallow = false) {
     value: unknown,
     receiver: object
   ): boolean {
+    // * 获取 key 属性旧值
     const oldValue = (target as any)[key]
+    // * 非浅
     if (!shallow) {
       value = toRaw(value)
       if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
@@ -161,35 +172,39 @@ function createSetter(shallow = false) {
     } else {
       // in shallow mode, objects are set as-is regardless of reactive or not
     }
-
+    // * 校验是否有含 key：1. target为数组时，key 需小于 length; 2. 对象检测是否含 key
     const hadKey =
       isArray(target) && isIntegerKey(key)
         ? Number(key) < target.length
         : hasOwn(target, key)
+    // ? Reflect 值
     const result = Reflect.set(target, key, value, receiver)
     // don't trigger if target is something up in the prototype chain of original
-    // 如果 target 是原型链中，则不触发。
+    // ? 如果 target 是原型链中，则不触发。
     if (target === toRaw(receiver)) {
       if (!hadKey) {
+        // * 不存在 key，进行 trigger add
         trigger(target, TriggerOpTypes.ADD, key, value)
       } else if (hasChanged(value, oldValue)) {
+        // * 更新
         trigger(target, TriggerOpTypes.SET, key, value, oldValue)
       }
     }
     return result
   }
 }
-// vue3.0 对象的 delete 操作可以进行拦截
+// ! delete 操作
 function deleteProperty(target: object, key: string | symbol): boolean {
   const hadKey = hasOwn(target, key)
   const oldValue = (target as any)[key]
   const result = Reflect.deleteProperty(target, key)
+  // * key 且 result 存在，触发
   if (result && hadKey) {
     trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
   }
   return result
 }
-// 对 in 操作进行拦截
+// ! 对 in 操作进行拦截 (propKey in proxy)
 function has(target: object, key: string | symbol): boolean {
   const result = Reflect.has(target, key)
   if (!isSymbol(key) || !builtInSymbols.has(key)) {
@@ -197,7 +212,7 @@ function has(target: object, key: string | symbol): boolean {
   }
   return result
 }
-
+// ! 拦截Object.getOwnPropertyNames(proxy)、Object.getOwnPropertySymbols(proxy)、Object.keys(proxy)、for...in循环，返回一个数组
 function ownKeys(target: object): (string | number | symbol)[] {
   track(target, TrackOpTypes.ITERATE, isArray(target) ? 'length' : ITERATE_KEY)
   return Reflect.ownKeys(target)

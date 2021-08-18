@@ -336,7 +336,7 @@ function mountPortal(vnode, container) {
   const target = typeof tag === 'string' ? document.querySelector(tag) : tag
   // 单子元素，直接挂载
   if (childFlags & ChildrenFlags.SINGLE_VNODE) {
-    mount(vnode, target)
+    mount(children, target)
   } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
     for (let i = 0; i < children.length; i++) {
       mount(children[i], target)
@@ -363,22 +363,65 @@ function mountComponent(vnode, container, isSVG) {
 // ? 挂载有状态组件：类型组件
 function mountStatefulComponent(vnode, container, isSVG) {
   // 1. 创建实例: 基于类的组件，直接使用 new 关键字创建
-  const instance = new vnode.tag()
-  // 2. 渲染VNode：通过 render 函数拿到内容
-  instance.$vnode = instance.render()
-  // 3. 挂载
-  mount(instance.$vnode, container, isSVG)
-  // 4. el 属性值 和 组件实例的 $el 属性都引用 DOM 元素
-  instance.$el = vnode.el = instance.$vnode.el
+  const instance = (vnode.children = new vnode.tag())
+  // 简化为直接使用 VNodeData
+  instance.$props = vnode.data
+  instance._update = function() {
+    if (instance._mounted) {
+      // 1. 拿到旧 VNode
+      const prevVNode = instance.$vnode
+      // 2. 新 VNode
+      const nextVNode = (instance.$vnode = instance.render())
+      // 3. patch 更新
+      patch(prevVNode, nextVNode, prevVNode.el.parentNode)
+      // 4。 更新 vnode.el 和 $el
+      instance.$el = vnode.el = instance.$vnode.el
+    } else {
+      // 2. 渲染VNode：通过 render 函数拿到内容
+      instance.$vnode = instance.render()
+      // 3. 挂载
+      mount(instance.$vnode, container, isSVG)
+      instance._mounted = true
+      // 4. el 属性值 和 组件实例的 $el 属性都引用 DOM 元素
+      instance.$el = vnode.el = instance.$vnode.el
+      // 调用 mounted 钩子
+      instance.mounted && instance.mounted()
+    }
+  }
+  instance._update()
 }
 // ? 无状态组件，直接返回 VNode
 function mountFunctionalComponent(vnode, container, isSVG) {
-  // 获取 vnode
-  const $vnode = vnode.tag()
-  // 挂载
-  mount($vnode, container, isSVG)
-  // 因孙涛组件的根元素
-  vnode.el = $vnode.el
+  vnode.handle = {
+    prev: null,
+    next: vnode,
+    container,
+    update: () => {
+      if (vnode.handle.prev) {
+        // ! 注意：获取新旧组件 VNode
+        const prevVNode = vnode.handle.prev
+        const nextVNode = vnode.handle.next
+        // ! 组件产出的 VNode
+        const prevTree = prevVNode.children
+        const props = nextVNode.data
+        // 新函数组件产出的 VNode
+        const nextTree = (nextVNode.children = nextVNode.tag(props))
+        // 更新
+        patch(prevTree, nextTree, vnode.handle.container)
+
+      } else {
+        // 获取 props
+        const props = vnode.data
+        // 获取 vnode
+        const $vnode = (vnode.children = vnode.tag(props))
+        // 挂载
+        mount($vnode, container, isSVG)
+        // 因孙涛组件的根元素
+        vnode.el = $vnode.el
+      }
+    }
+  }
+  vnode.handle.update()
 }
 // ! 渲染器阶段：打补丁
 // 对比思路：相同类型的 VNode 才进行对比，不同时直接替换。
@@ -401,14 +444,22 @@ function patch(prevVNode, vnode, container) {
   }
 }
 // ? 替换
+// 思路：从容器中移除旧的DOM，将新 VNode 挂载到容器中
 function replaceVNode(prevVNode, nextVNode, container) {
-  // TODO 待优化
   // 旧 VNode 渲染的 DOM 从容器中删除
   container.removeChild(prevVNode.el)
+  // TODO 对于有状态组件，需要调用 unmounted
+  if (prevVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+    const instance = prevVNode.children
+    instance.unmounted && instance.unmounted()
+  }
   // 新的 Mount挂载
   mount(nextVNode, container, false)
 }
-
+// ? 对比 Element 元素
+// * tag 不同直接替换
+// * 对比 VNodeData
+// * 对比 Children
 function patchElement(prevVNode, nextVNode, container) {
   // !不同的 tag 直接替换
   if (prevVNode.tag !== nextVNode.tag) {
@@ -574,14 +625,39 @@ function patchChildren(
   }
 }
 
-function patchComponent(prevVNode, nextVNode, container) {}
+function patchComponent(prevVNode, nextVNode, container) {
+  // tag 属性不同直接替换
+  if (prevVNode.tag !== nextVNode.tag) {
+    replaceVNode(prevVNode, nextVNode, container)
+  } else if (nextVNode.flags & VNodeFlags.COMPONENT_STATEFUL_NORMAL) {
+    // 有状态
+    // 获取实例
+    const instance = (nextVNode.children = prevVNode.children)
+    // 更新 props
+    instance.$props = nextVNode.data
+    // 更新组件
+    instance._update()
+  } else {
+    // 更新函数组件
+    const handle = (nextVNode.handle = prevVNode.handle)
+    // 更新 hanle 对象
+    handle.prev = prevVNode
+    handle.next = nextVNode
+    handle.container = container
+    handle.update()
+  }
+}
 // 更新文本，使用 nodeValue 属性
+// 直接对比：children 中存储文本是否相同
 function patchText(prevVNode, nextVNode, container) {
   const el = (nextVNode.el = prevVNode.el)
   if (nextVNode.children !== prevVNode.children) {
     el.nodeValue = nextVNode.children
   }
 }
+// ? 对比 Fragment
+// * 更新子组件即可
+// * 别忘了更新 el
 function patchFragment(prevVNode, nextVNode, container) {
   // 更新新旧节点即可
   patchChildren(
@@ -604,6 +680,9 @@ function patchFragment(prevVNode, nextVNode, container) {
       break
   }
 }
+// ? 对比 Portal
+// * 更新子节点
+// * 更新挂载点
 function patchPortal(prevVNode, nextVNode) {
   patchChildren(
     prevVNode.childFlags,
@@ -642,25 +721,27 @@ function patchPortal(prevVNode, nextVNode) {
 
 // ! 以下为测试内容 =======================================================
 
-// ? 测试 patch
-const prevVNode = h(
-  'div',
-  null,
-  h('p', {
-    style: {
-      height: '100px',
-      width: '100px',
-      background: 'green'
-    }
-  })
-)
-const nextVNode = h('div')
+// ? 组件的被动更新
 
-// 第一次渲染 mount
-render(prevVNode, document.getElementById('root'))
-setTimeout(() => {
-  render(nextVNode, document.getElementById('root'))
-}, 1000)
+// ? 测试 patch
+// const prevVNode = h(
+//   'div',
+//   null,
+//   h('p', {
+//     style: {
+//       height: '100px',
+//       width: '100px',
+//       background: 'green'
+//     }
+//   })
+// )
+// const nextVNode = h('div')
+
+// // 第一次渲染 mount
+// render(prevVNode, document.getElementById('root'))
+// setTimeout(() => {
+//   render(nextVNode, document.getElementById('root'))
+// }, 1000)
 
 // ? 测试 mount 函数
 // const root = document.getElementById('root')
@@ -704,7 +785,7 @@ setTimeout(() => {
 // console.log('divNode', divVNode)
 // // render(divVNode, root)
 
-// // ! 测试有状态组件的渲染
+// ! 测试有状态组件的渲染
 // class MyComp {
 //   render() {
 //     return h(

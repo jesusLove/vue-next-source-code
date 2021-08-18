@@ -55,6 +55,7 @@ export const hydrate = ((...args) => {
 }) as RootHydrateFunction
 
 // 1. 入口方法
+// 两件事：1. 创建 app 对象；2：重新 app.mount 方法
 export const createApp = ((...args) => {
   // 1.创建渲染器, 创建 App 对象
   const app = ensureRenderer().createApp(...args)
@@ -119,7 +120,8 @@ function injectNativeTagCheck(app: App) {
     writable: false
   })
 }
-// 标准化容器
+// 标准化容器, 如果是字符串 tag 查找到 DOM 节点返回；
+// 否则直接返回
 function normalizeContainer(
   container: Element | ShadowRoot | string
 ): Element | null {

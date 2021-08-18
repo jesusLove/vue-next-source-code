@@ -322,13 +322,14 @@ function _createVNode(
   dynamicProps: string[] | null = null,
   isBlockNode = false
 ): VNode {
+  // 注释节点
   if (!type || type === NULL_DYNAMIC_COMPONENT) {
     if (__DEV__ && !type) {
       warn(`Invalid vnode type when creating vnode: ${type}.`)
     }
     type = Comment
   }
-
+  // type 为 vnode
   if (isVNode(type)) {
     // createVNode receiving an existing vnode. This happens in cases like
     // <component :is="vnode"/>
@@ -361,12 +362,13 @@ function _createVNode(
       if (isProxy(style) && !isArray(style)) {
         style = extend({}, style)
       }
-      props.style = normalizeStyle(style)
+      props.style = normalizeStyle(style) // 处理 style
     }
   }
 
   // encode the vnode type information into a bitmap
   // 对 VNode 类型信息编码
+  // Element、Suspense、Teleport、Stateful_component、Functional_component
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
     : __FEATURE_SUSPENSE__ && isSuspense(type)
