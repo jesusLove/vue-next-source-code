@@ -126,6 +126,8 @@ type NormalizedProp =
 export type NormalizedProps = Record<string, NormalizedProp>
 export type NormalizedPropsOptions = [NormalizedProps, string[]] | []
 
+// ! 初始化 Props
+// 有状态组件 和 函数组件分别处理
 export function initProps(
   instance: ComponentInternalInstance,
   rawProps: Data | null,
@@ -143,8 +145,10 @@ export function initProps(
 
   if (isStateful) {
     // stateful
+    // ? 有状态组件：浅层 reactive props
     instance.props = isSSR ? props : shallowReactive(props)
   } else {
+    // ? 函数组件
     if (!instance.type.props) {
       // functional w/ optional props, props === attrs
       instance.props = attrs

@@ -137,7 +137,7 @@ function createReactiveEffect<T = any>(
   return effect
 }
 
-// 清除，deps 中 对象对应的 effect 属性的值。
+// ! 清除，deps 中 对象对应的 effect 属性的值。
 // targetMap 中存放一个 Map 数据，称为响应依赖映射
 // 那问题来了，effect为什么要存着这么个递归数据呢？这是因为要通过cleanup方法，
 // 在被执行前，把自己从响应依赖映射中删除了。然后执行自身原始函数fn，
@@ -153,7 +153,8 @@ function cleanup(effect: ReactiveEffect) {
   }
 }
 
-// 避免跨组件依赖内存泄露
+// !避免跨组件依赖内存泄露
+// *当 shouldTrack 为 false 时会停止 track
 let shouldTrack = true
 const trackStack: boolean[] = []
 
@@ -205,8 +206,8 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
     }
   }
 }
-// 根据 target 和 key 从 targetMap 中找到相关的所有副作用函数遍历执行一遍。
-// 1. 通过 target 拿到target依赖集合 depsMap。
+// ! 根据 target 和 key 从 targetMap 中找到相关的所有副作用函数遍历执行一遍。
+// 1. 通过 target 拿到依赖集合 depsMap。
 // 2. 创建运行 effects 集合
 // 3. 根据 key 在 depsMap 集合中找到对应的 effect 集合，添加到 effects 集合。
 // 4. 遍历 effects 执行相关的 副作用effect。

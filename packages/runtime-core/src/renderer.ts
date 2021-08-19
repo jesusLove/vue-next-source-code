@@ -1366,13 +1366,13 @@ function baseCreateRenderer(
     optimized
   ) => {
     // create reactive effect for rendering
-    // 创建一个渲染 effect。
+    // ! 创建一个渲染 effect。
     instance.update = effect(function componentEffect() {
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
         const { bm, m, parent } = instance
-
+        // ? 调用生命周期方法
         // beforeMount hook
         if (bm) {
           invokeArrayFns(bm)
@@ -1386,7 +1386,8 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `render`)
         }
-        // 创建组件内部的 VNode
+        // ? 创建组件内部的 VNode
+        // 此 VNode 不是组件的 VNode 而是组件内部的 VNode
         const subTree = (instance.subTree = renderComponentRoot(instance))
         if (__DEV__) {
           endMeasure(instance, `render`)
@@ -1462,6 +1463,7 @@ function baseCreateRenderer(
 
         if (next) {
           next.el = vnode.el
+          // ? 预先更新组件：props / slots
           updateComponentPreRender(instance, next, optimized)
         } else {
           next = vnode
@@ -1490,6 +1492,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `patch`)
         }
+        // ? 更新组件
         patch(
           prevTree,
           nextTree,

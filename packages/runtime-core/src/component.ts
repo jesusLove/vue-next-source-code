@@ -562,10 +562,6 @@ export let isInSSRComponentSetup = false
 // ! 组件实例的设置流程
 // * 初始化 Props / Slots
 // * 如果是有状态组件，设置后
-// ? 为什么创建渲染上下文代理？
-// Vue3.0 中将不同数据存储在不同属性中例如：data、props、ctx等，
-// 执行组件渲染的时候，直接访问渲染上下文 instance.ctx 中的属性，通过 proxy 代理到
-// 对 data、ctx、props 等数据的访问和修改。
 export function setupComponent(
   instance: ComponentInternalInstance,
   isSSR = false
@@ -586,6 +582,10 @@ export function setupComponent(
   return setupResult
 }
 // ! 设置有状态组件
+// ? 为什么创建渲染上下文代理？
+// * Vue3.0 中将不同数据存储在不同属性中例如：data、props、ctx等，
+// * 执行组件渲染的时候，直接访问渲染上下文 instance.ctx 中的属性，通过 proxy 代理到
+// * 对 data、ctx、props 等数据的访问和修改。
 function setupStatefulComponent(
   instance: ComponentInternalInstance,
   isSSR: boolean
