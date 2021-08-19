@@ -467,6 +467,7 @@ type DataFn = (vm: ComponentPublicInstance) => any
 
 export let isInBeforeCreate = false
 
+// ! 兼容 2.0 options
 export function applyOptions(
   instance: ComponentInternalInstance,
   options: ComponentOptions,

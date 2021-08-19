@@ -441,7 +441,7 @@ if (__DEV__ && !__TEST__) {
     return Reflect.ownKeys(target)
   }
 }
-
+// 在 PublicInstanceProxyHandlers 基础上扩展
 export const RuntimeCompiledPublicInstanceProxyHandlers = extend(
   {},
   PublicInstanceProxyHandlers,
@@ -454,6 +454,7 @@ export const RuntimeCompiledPublicInstanceProxyHandlers = extend(
       return PublicInstanceProxyHandlers.get!(target, key, target)
     },
     has(_: ComponentRenderContext, key: string) {
+      // key 以 _ 开头或在区间变量白名单中，则 has 为 FALSE
       const has = key[0] !== '_' && !isGloballyWhitelisted(key)
       if (__DEV__ && !has && PublicInstanceProxyHandlers.has!(_, key)) {
         warn(

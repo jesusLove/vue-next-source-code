@@ -623,14 +623,14 @@ function setupStatefulComponent(
   // ? 2. 判断处理 setup 函数
   const { setup } = Component
   if (setup) {
-    // 如果 setup 函数有参数，则创建一个 setupContext
-    // setup 参数长度大于 1
+    // * 如果 setup 函数有参数，则创建一个 setupContext
+    // * setup 参数长度大于 1
     const setupContext = (instance.setupContext =
       setup.length > 1 ? createSetupContext(instance) : null)
 
     currentInstance = instance
     pauseTracking()
-    // 执行 setup 函数，获取结果
+    // * 执行 setup 函数，获取结果
     const setupResult = callWithErrorHandling(
       setup,
       instance,
@@ -639,7 +639,7 @@ function setupStatefulComponent(
     )
     resetTracking()
     currentInstance = null
-    // 处理 setup 执行结果
+    // * 处理 setup 执行结果
     if (isPromise(setupResult)) {
       if (isSSR) {
         // return the promise so server-renderer can wait on it
@@ -663,14 +663,15 @@ function setupStatefulComponent(
     finishComponentSetup(instance, isSSR)
   }
 }
-
+// ! 处理返回结果
 export function handleSetupResult(
   instance: ComponentInternalInstance,
   setupResult: unknown,
   isSSR: boolean
-) {
+) { 
   if (isFunction(setupResult)) {
     // setup returned an inline render function
+    // ? 1. setup 返回渲染函数，直接赋值给 render 属性
     if (__NODE_JS__ && (instance.type as ComponentOptions).__ssrInlineRender) {
       // when the function's name is `ssrRender` (compiled by SFC inline mode),
       // set it as ssrRender instead.
@@ -679,6 +680,7 @@ export function handleSetupResult(
       instance.render = setupResult as InternalRenderFunction
     }
   } else if (isObject(setupResult)) {
+    // ? 2. 对象
     if (__DEV__ && isVNode(setupResult)) {
       warn(
         `setup() should not return VNodes directly - ` +
@@ -715,10 +717,21 @@ let compile: CompileFunction | undefined
  * For runtime-dom to register the compiler.
  * Note the exported method uses any to avoid d.ts relying on the compiler types.
  */
+// ! compile 方法时通过外部注册
 export function registerRuntimeCompiler(_compile: any) {
   compile = _compile
 }
-
+// ! 完成组件设置
+// ? 标准化模板和渲染函数 ?
+// * 第一种：使用 SFC 单文件的开发方式来开发组件，通过编写组件的 template 模板去描述一个组件的 DOM 结构。
+// * 需要 vue-loader 将 template 编译为 render 函数。
+// * 第二种：直接引入 Vue.js 在组件对象 template 属性中编写组件的模板。
+// ? runtime-only vs runtime-compiled ?
+// * 区别是否注册 compilte 方法
+// * 1. compile 和 组件 template 存在，render 不存在时 => runtime-compiled 版本会在 JS 运行时进行模板编译生成 render 函数。
+// * 2. compile 和 render 方法不存在，template 存在的情况，由于没有 compile 用的是 runtime-only 的版本。
+// * 给用户报警告，用运行时需要 runtime-compiled 版本的 Vue.js
+// * 3. 
 function finishComponentSetup(
   instance: ComponentInternalInstance,
   isSSR: boolean
@@ -726,6 +739,7 @@ function finishComponentSetup(
   const Component = instance.type as ComponentOptions
 
   // template / render function normalization
+  // 1. 标准化模板和渲染函数
   if (__NODE_JS__ && isSSR) {
     if (Component.render) {
       instance.render = Component.render as InternalRenderFunction
@@ -736,6 +750,7 @@ function finishComponentSetup(
       if (__DEV__) {
         startMeasure(instance, `compile`)
       }
+      // ? compile 编译 template 模板生成 render 函数。
       Component.render = compile(Component.template, {
         isCustomElement: instance.appContext.config.isCustomElement,
         delimiters: Component.delimiters
@@ -744,12 +759,13 @@ function finishComponentSetup(
         endMeasure(instance, `compile`)
       }
     }
-
+    // ? 赋值给 instance.render 组件渲染时，运行 render 生成组件的子树 vnode
     instance.render = (Component.render || NOOP) as InternalRenderFunction
 
     // for runtime-compiled render functions using `with` blocks, the render
     // proxy used needs a different `has` handler which is more performant and
     // also only allows a whitelist of globals to fallthrough.
+    // ? 使用 with 块运行时编译的渲染函数代理。
     if (instance.render._rc) {
       instance.withProxy = new Proxy(
         instance.ctx,
@@ -759,6 +775,7 @@ function finishComponentSetup(
   }
 
   // support for 2.x options
+  // ? 兼容 2.x Options 
   if (__FEATURE_OPTIONS_API__) {
     currentInstance = instance
     pauseTracking()
@@ -770,6 +787,7 @@ function finishComponentSetup(
   // warn missing template/render
   if (__DEV__ && !Component.render && instance.render === NOOP) {
     /* istanbul ignore if */
+    // ? 没有 render 函数 和 模板，运行时版本 runtime-compiled 
     if (!compile && Component.template) {
       warn(
         `Component provided template option but ` +
@@ -783,6 +801,7 @@ function finishComponentSetup(
                 : ``) /* should not happen */
       )
     } else {
+      // ? 都没有是告诉用户需要 render 或者 template
       warn(`Component is missing template or render function.`)
     }
   }
