@@ -56,8 +56,8 @@ function targetTypeMap(rawType: string) {
   }
 }
 
-// 1. value 不可被转为 Proxy 或 不可被扩展时，TargetType 为 无效。
-// 2. toRawType ==> Object.prototype.toString.call(value).slice(8, -1)
+// ! 1. value 不可被转为 Proxy 或 不可被扩展时，TargetType 为 无效。
+// ! 2. toRawType ==> Object.prototype.toString.call(value).slice(8, -1)
 // 例如：{} ==> "Object", [] ==> "Array"
 // 通过 targetTypeMap 获取对应的 TargetType。
 function getTargetType(value: Target) {
@@ -197,7 +197,7 @@ function createReactiveObject(
   }
   // ? target is already a Proxy, return it.
   // exception: calling readonly() on a reactive object
-  // target 已经是 proxy 直接返回
+  // target 已经是 proxy 直接返回；通过 target.__v_raw 属性判断 target 是否为响应式对象。
   if (
     target[ReactiveFlags.RAW] &&
     !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
@@ -205,7 +205,7 @@ function createReactiveObject(
     return target
   }
   // target already has corresponding Proxy
-  // ? 已经有对应的 映射 Proxy 返回。
+  // ? 已经有对应的 映射 Proxy 返回。原始对象target多次执行 reactive 会返回相同的 proxy
   const proxyMap = isReadonly ? readonlyMap : reactiveMap
   const existingProxy = proxyMap.get(target)
   if (existingProxy) {
@@ -218,7 +218,7 @@ function createReactiveObject(
     return target
   }
   // ? 创建 target 的 proxy。
-  // proxy 第二个参数 handler，定义对象的拦截行为。
+  // ? proxy 第二个参数 handler，定义对象的拦截行为。
   // 关于 Proxy 参考 ：https://es6.ruanyifeng.com/#docs/proxy
   const proxy = new Proxy(
     target,

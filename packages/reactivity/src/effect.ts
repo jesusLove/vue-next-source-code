@@ -67,11 +67,6 @@ export function isEffect(fn: any): fn is ReactiveEffect {
 }
 
 // ! 1. 创建一个 effect, 非懒加载 立即执行一次
-/**
- *
- * @param fn 方法
- * @param options 配置，默认空对象
- */
 export function effect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions = EMPTY_OBJ
@@ -104,10 +99,12 @@ export function stop(effect: ReactiveEffect) {
 let uid = 0
 
 // ! 创建 effect
+// ? effect 是个函数
 function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
 ): ReactiveEffect<T> {
+  // ? effect 函数
   const effect = function reactiveEffect(): unknown {
     if (!effect.active) {
       return options.scheduler ? undefined : fn()
@@ -127,12 +124,19 @@ function createReactiveEffect<T = any>(
       }
     }
   } as ReactiveEffect
+  // 唯一 ID
   effect.id = uid++
+  // 是否允许递归
   effect.allowRecurse = !!options.allowRecurse
+  // 是否为 effect，为 true
   effect._isEffect = true
+  // 是否激活
   effect.active = true
+  // 原始 fn
   effect.raw = fn
+  // 依赖 deps
   effect.deps = []
+  // 选项：lazy, allowRecurse 等
   effect.options = options
   return effect
 }
@@ -176,21 +180,24 @@ export function resetTracking() {
 // ! 收集依赖：数据变化后执行的 副作用 函数
 // target -> key -> [effect]
 export function track(target: object, type: TrackOpTypes, key: unknown) {
+  // ? 判断是否允许被收集
   if (!shouldTrack || activeEffect === undefined) {
     return
   }
-  // 1. 查询缓存
+  // ? 1. 查询缓存: map<any, set>
   let depsMap = targetMap.get(target)
-  // 2. 不存在创建
+  // ? 2. 不存在创建
   if (!depsMap) {
     targetMap.set(target, (depsMap = new Map()))
   }
-  // 3. key 对应的 dep 集合。
+  // ? 3. key 对应的 dep 集合。
+  // ? 一个 key 可以对应多个 effect 所以用 set 存放
   let dep = depsMap.get(key)
   if (!dep) {
     depsMap.set(key, (dep = new Set()))
   }
-  // 4. 不存在则缓存
+  // ? 4. 不存在则缓存
+  // ? 当前 effect 不存在 dep 中则添加进去
   if (!dep.has(activeEffect)) {
     // 添加
     dep.add(activeEffect)
@@ -211,6 +218,7 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 // 2. 创建运行 effects 集合
 // 3. 根据 key 在 depsMap 集合中找到对应的 effect 集合，添加到 effects 集合。
 // 4. 遍历 effects 执行相关的 副作用effect。
+// type: SET, DELETE, ADD, CLEAR
 export function trigger(
   target: object,
   type: TriggerOpTypes,
@@ -219,16 +227,15 @@ export function trigger(
   oldValue?: unknown,
   oldTarget?: Map<unknown, unknown> | Set<unknown>
 ) {
-  // 1. 查询缓存
+  // ? 1. 查询缓存
   const depsMap = targetMap.get(target)
   if (!depsMap) {
     // never been tracked
     // 没有被跟踪
     return
   }
-  // 2.
   const effects = new Set<ReactiveEffect>()
-
+  // ? 添加 effect 到数组
   const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
     if (effectsToAdd) {
       effectsToAdd.forEach(effect => {
@@ -242,8 +249,10 @@ export function trigger(
   if (type === TriggerOpTypes.CLEAR) {
     // collection being cleared
     // trigger all effects for target
+    // ? 清除执行所有的 effects
     depsMap.forEach(add)
   } else if (key === 'length' && isArray(target)) {
+    // ? 数组
     depsMap.forEach((dep, key) => {
       if (key === 'length' || key >= (newValue as number)) {
         add(dep)
@@ -283,7 +292,7 @@ export function trigger(
         break
     }
   }
-
+  // ? 执行 effect
   const run = (effect: ReactiveEffect) => {
     if (__DEV__ && effect.options.onTrigger) {
       effect.options.onTrigger({
@@ -302,6 +311,6 @@ export function trigger(
       effect()
     }
   }
-
+  // ? 执行所有的 effect
   effects.forEach(run)
 }

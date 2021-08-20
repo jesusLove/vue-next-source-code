@@ -35,6 +35,8 @@ export function isRef<T>(r: Ref<T> | unknown): r is Ref<T>
 export function isRef(r: any): r is Ref {
   return Boolean(r && r.__v_isRef === true) // 根据 __v_isRef 标识位
 }
+// ! reactive API 传入的 target 类型限制为 对象 和 数组
+// ! 一些基本类型的 String, Number 不支持
 // 创建 ref 函数重载
 export function ref<T extends object>(value: T): ToRef<T>
 export function ref<T>(value: T): Ref<UnwrapRef<T>>
@@ -51,7 +53,7 @@ export function shallowRef<T = any>(): Ref<T | undefined>
 export function shallowRef(value?: unknown) {
   return createRef(value, true)
 }
-// 创建 Ref 对象
+// ! 创建 Ref 对象
 // 私有变量 _value 保存值，设置其 setter 和 getter 方法。
 // getter 中进行 track
 // setter 中触发 trigger
@@ -63,6 +65,7 @@ class RefImpl<T> {
   constructor(private _rawValue: T, public readonly _shallow = false) {
     // 浅层 ref 私有 _value 为 _rawValue
     // 深层将 rawValue 转为响应对象，然后赋值个 _value
+    // * convert 如果 是对象转为 reactive
     this._value = _shallow ? _rawValue : convert(_rawValue)
   }
 
@@ -72,14 +75,16 @@ class RefImpl<T> {
   }
 
   set value(newVal) {
+    // 判断有变化更新新值
     if (hasChanged(toRaw(newVal), this._rawValue)) {
       this._rawValue = newVal
       this._value = this._shallow ? newVal : convert(newVal)
+      // 派发通知
       trigger(toRaw(this), TriggerOpTypes.SET, 'value', newVal)
     }
   }
 }
-// 创建 ref，过滤掉已经为 ref 对象的值
+// ! 创建 ref，过滤掉已经为 ref 对象的值
 function createRef(rawValue: unknown, shallow = false) {
   // 1. 判断是否已经为 ref 对象
   if (isRef(rawValue)) {

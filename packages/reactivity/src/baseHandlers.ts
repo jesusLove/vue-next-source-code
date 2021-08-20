@@ -86,7 +86,7 @@ function createGetter(isReadonly = false, shallow = false) {
   // 4. 对计算的值 res 进行判断，如果是数组或对象，则递归执行 reactive 把 res 编程响应式对象。
   // Proxy 只劫持对象本身，并不会劫持子对象的变化
   return function get(target: Target, key: string | symbol, receiver: object) {
-    // 1. __v_isReactive 属性值为 true: 表示该 target 响应的 proxy。
+    // ? 1. __v_isReactive 属性值为 true: 表示该 target 响应的 proxy。
     // 调用 isReactive 方法会走该判断
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
@@ -100,7 +100,7 @@ function createGetter(isReadonly = false, shallow = false) {
       // __v_raw 表示已经存在 proxy 直接读取 map 中的值。
       return target
     }
-    // 2. 参考：/vue/examples/demo/baseHandler.text.html。
+    // ? 2. 参考：/vue/examples/demo/baseHandler.text.html。
     // target 为数组
     const targetIsArray = isArray(target)
     // target 为数组并且 key
@@ -111,7 +111,7 @@ function createGetter(isReadonly = false, shallow = false) {
     if (!isReadonly && targetIsArray && hasOwn(arrayInstrumentations, key)) {
       return Reflect.get(arrayInstrumentations, key, receiver)
     }
-    // 3. Reflect.get方法查找并返回target对象的name属性，如果没有该属性，则返回undefined。
+    // ? 3. Reflect.get方法查找并返回target对象的name属性，如果没有该属性，则返回undefined。
     const res = Reflect.get(target, key, receiver)
 
     if (
@@ -121,22 +121,24 @@ function createGetter(isReadonly = false, shallow = false) {
     ) {
       return res
     }
-    // 4. 只读 proxy 无需依赖收集。
+    // ! 进行依赖收集
     if (!isReadonly) {
       track(target, TrackOpTypes.GET, key)
     }
-    // 浅层处理，直接返回 res，不进行 reactive 操作。
+    // ? 4. 对 res 进行判断
+    // * 浅层处理，直接返回 res，不进行 reactive 操作。
     if (shallow) {
       return res
     }
-    // res 为 ref 对象时，进行
+    // * res 为 ref 对象时，进行
     if (isRef(res)) {
       // ref unwrapping - does not apply for Array + integer key.
       // ref 解包，不适用于 Array + 整数 key
       const shouldUnwrap = !targetIsArray || !isIntegerKey(key)
       return shouldUnwrap ? res.value : res
     }
-    // 返回值是否为对象
+    // * 返回值是否为对象，递归执行 reactive 将 res 变成响应式对象。
+    // * 递归的原因：Proxy 只劫持对象本身，并不接触子对象的变化。
     if (isObject(res)) {
       // Convert returned value into a proxy as well. we do the isObject check
       // here to avoid invalid value warning. Also need to lazy access readonly
@@ -181,6 +183,7 @@ function createSetter(shallow = false) {
     const result = Reflect.set(target, key, value, receiver)
     // don't trigger if target is something up in the prototype chain of original
     // ? 如果 target 是原型链中，则不触发。
+    // 如果目标原型链也是一个 Proxy，通过 Reflect.set 修改原型链上的属性会再次触发 trigger,所以就没有必要触发两次 trigger
     if (target === toRaw(receiver)) {
       if (!hadKey) {
         // * 不存在 key，进行 trigger add
