@@ -8,13 +8,16 @@ import {
 } from './transform'
 import { ParserPlugin } from '@babel/parser'
 
+// ! 解析 template 为 AST 时 options 接口
 export interface ParserOptions {
   /**
    * e.g. platform native elements, e.g. `<div>` for browsers
+   * 平台原生元素，例如：<div>
    */
   isNativeTag?: (tag: string) => boolean
   /**
    * e.g. native elements that can self-close, e.g. `<img>`, `<br>`, `<hr>`
+   * 平台原生元素，闭合
    */
   isVoidTag?: (tag: string) => boolean
   /**
@@ -42,15 +45,18 @@ export interface ParserOptions {
   ) => TextModes
   /**
    * @default ['{{', '}}']
+   * 分隔符
    */
   delimiters?: [string, string]
   /**
    * Only needed for DOM compilers
+   * 解析： > < & ' " 等
    */
   decodeEntities?: (rawText: string, asAttr: boolean) => string
   onError?: (error: CompilerError) => void
   /**
    * Keep comments in the templates AST, even in production
+   * 是否为 comments
    */
   comments?: boolean
 }

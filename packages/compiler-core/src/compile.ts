@@ -54,6 +54,7 @@ export function getBaseTransformPreset(
 
 // we name it `baseCompile` so that higher order compilers like
 // @vue/compiler-dom can export `compile` while re-exporting everything else.
+// ! 任务：1. 解析 template 生产 AST；2. AST 转换；3：生成代码
 export function baseCompile(
   template: string | RootNode,
   options: CompilerOptions = {}

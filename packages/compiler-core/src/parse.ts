@@ -88,6 +88,7 @@ export function baseParse(
 ): RootNode {
   // ? 创建解析上下文
   const context = createParserContext(content, options)
+  // {column, line, offset}
   const start = getCursor(context)
   // ? 解析子节点，并创建 AST
   return createRoot(
@@ -117,6 +118,7 @@ function createParserContext(
   }
 }
 
+// ! 解析节点，生成 nodes 数组
 function parseChildren(
   context: ParserContext,
   mode: TextModes,
@@ -125,7 +127,7 @@ function parseChildren(
   const parent = last(ancestors)
   const ns = parent ? parent.ns : Namespaces.HTML
   const nodes: TemplateChildNode[] = []
-
+  // * 自顶向下分析代码，生成 nodes
   while (!isEnd(context, mode, ancestors)) {
     __TEST__ && assert(context.source.length > 0)
     const s = context.source
@@ -258,7 +260,7 @@ function parseChildren(
       }
     }
   }
-
+  // * 空白字符的管理
   return removedWhitespace ? nodes.filter(Boolean) : nodes
 }
 

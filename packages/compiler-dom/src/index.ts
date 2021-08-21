@@ -36,7 +36,9 @@ export const DOMDirectiveTransforms: Record<string, DirectiveTransform> = {
   on: transformOn, // override compiler-core
   show: transformShow
 }
-
+// ! 编译的入口文件
+// 内部调用 baseCompile 函数，该函数定义在 compiler-core 包中
+// 参数一：模板字符串；参数：编译的配置信息
 export function compile(
   template: string,
   options: CompilerOptions = {}
