@@ -150,7 +150,7 @@ export type Component<
 export { ComponentOptions }
 
 type LifecycleHook = Function[] | null
-
+// ! 生命周期钩子
 export const enum LifecycleHooks {
   BEFORE_CREATE = 'bc',
   CREATED = 'c',

@@ -1374,6 +1374,7 @@ function baseCreateRenderer(
         const { bm, m, parent } = instance
         // ? 调用生命周期方法
         // beforeMount hook
+        // 组件挂载阶段钱
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -1426,6 +1427,7 @@ function baseCreateRenderer(
           initialVNode.el = subTree.el
         }
         // mounted hook
+        // 组件挂载后
         if (m) {
           queuePostRenderEffect(m, parentSuspense)
         }
@@ -2159,7 +2161,7 @@ function baseCreateRenderer(
     }
     hostRemove(end)
   }
-
+  // ! 组件销毁
   const unmountComponent = (
     instance: ComponentInternalInstance,
     parentSuspense: SuspenseBoundary | null,
@@ -2171,9 +2173,11 @@ function baseCreateRenderer(
 
     const { bum, effects, update, subTree, um } = instance
     // beforeUnmount hook
+    // 调用 钩子
     if (bum) {
       invokeArrayFns(bum)
     }
+    // ?清理组件引用的 effect 函数
     if (effects) {
       for (let i = 0; i < effects.length; i++) {
         stop(effects[i])
@@ -2181,11 +2185,13 @@ function baseCreateRenderer(
     }
     // update may be null if a component is unmounted before its async
     // setup has resolved.
+    // ?异步组件加载钱就销毁，则不会注册 effect 函数
     if (update) {
       stop(update)
       unmount(subTree, instance, parentSuspense, doRemove)
     }
     // unmounted hook
+    // 调用 钩子
     if (um) {
       queuePostRenderEffect(um, parentSuspense)
     }
