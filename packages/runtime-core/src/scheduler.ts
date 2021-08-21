@@ -30,14 +30,16 @@ export type SchedulerCbs = SchedulerCb | SchedulerCb[]
 let isFlushing = false
 let isFlushPending = false
 
+// ! 异步任务队列
 const queue: SchedulerJob[] = []
 let flushIndex = 0
-
+// ! pre 异步任务回调函数队列
 const pendingPreFlushCbs: SchedulerCb[] = []
 let activePreFlushCbs: SchedulerCb[] | null = null
 let preFlushIndex = 0
-
+// ! post 异步任务回调函数队列
 const pendingPostFlushCbs: SchedulerCb[] = []
+// 正在执行的任务
 let activePostFlushCbs: SchedulerCb[] | null = null
 let postFlushIndex = 0
 
@@ -189,13 +191,15 @@ export function flushPostFlushCbs(seen?: CountMap) {
 const getId = (job: SchedulerJob | SchedulerCb) =>
   job.id == null ? Infinity : job.id
 
+// ! 执行 job
+// 执行顺序：pre > job > post
 function flushJobs(seen?: CountMap) {
   isFlushPending = false
   isFlushing = true
   if (__DEV__) {
     seen = seen || new Map()
   }
-
+  // * pre cbs 先执行
   flushPreFlushCbs(seen)
 
   // Sort queue before flush.
@@ -208,6 +212,7 @@ function flushJobs(seen?: CountMap) {
   queue.sort((a, b) => getId(a) - getId(b))
 
   try {
+    // * 执行 job
     for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
       const job = queue[flushIndex]
       if (job) {
@@ -220,7 +225,7 @@ function flushJobs(seen?: CountMap) {
   } finally {
     flushIndex = 0
     queue.length = 0
-
+    // * 最后执行 post cbs
     flushPostFlushCbs(seen)
 
     isFlushing = false

@@ -120,6 +120,7 @@ export function watch<
 ): WatchStopHandle
 
 // implementation
+// ! watch 实现
 export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   source: T | WatchSource<T>,
   cb: any,
@@ -134,7 +135,11 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   }
   return doWatch(source as any, cb, options)
 }
-
+// ? 标准化 source
+// ? 构建 applyCb 回调函数
+// ? 创建 scheduler 时序执行函数
+// ? 创建 effect 副作用函数
+// ? 返回侦听器销毁函数
 function doWatch(
   source: WatchSource | WatchSource[] | WatchEffect | object,
   cb: WatchCallback | null,
@@ -164,16 +169,21 @@ function doWatch(
         `a reactive object, or an array of these types.`
     )
   }
-
+  // ? 1 标准化 Source
   let getter: () => any
   let forceTrigger = false
+
   if (isRef(source)) {
+    // * 1. source 为 ref 对象，则创建一个访问 source.value 的 getter 函数。
     getter = () => (source as Ref).value
     forceTrigger = !!(source as Ref)._shallow
   } else if (isReactive(source)) {
+    // * 2. source 为 reactive 对象，则创建一个访问 source 的 getter 函数，并设置 deep 为 true。
     getter = () => source
+    // * deep 递归访问
     deep = true
   } else if (isArray(source)) {
+    // * 4. source 为 Array 对象，遍历判断元素类型然后返回上面对应的 getter。
     getter = () =>
       source.map(s => {
         if (isRef(s)) {
@@ -187,12 +197,14 @@ function doWatch(
         }
       })
   } else if (isFunction(source)) {
+    // * 3. source 为 一个函数，则进一步判断 cb 是否存在，对于 Watch API 来说，cb 一定存在且是一个回调函数， getter 就是对 source 函数封装的函数。
     if (cb) {
       // getter with cb
       getter = () =>
         callWithErrorHandling(source, instance, ErrorCodes.WATCH_GETTER)
     } else {
       // no cb -> simple effect
+      // 没有回调函数 watchEffect
       getter = () => {
         if (instance && instance.isUnmounted) {
           return
@@ -200,6 +212,7 @@ function doWatch(
         if (cleanup) {
           cleanup()
         }
+        // 执行 source
         return callWithErrorHandling(
           source,
           instance,
@@ -218,7 +231,9 @@ function doWatch(
     getter = () => traverse(baseGetter())
   }
 
+  // ? 回调函数的处理逻辑
   let cleanup: () => void
+  // 注册无效回调函数
   const onInvalidate: InvalidateCbRegistrator = (fn: () => void) => {
     cleanup = runner.options.onStop = () => {
       callWithErrorHandling(fn, instance, ErrorCodes.WATCH_CLEANUP)
@@ -239,7 +254,7 @@ function doWatch(
     }
     return NOOP
   }
-
+  // * 旧值初始值
   let oldValue = isArray(source) ? [] : INITIAL_WATCHER_VALUE
   const job: SchedulerJob = () => {
     if (!runner.active) {
@@ -247,22 +262,26 @@ function doWatch(
     }
     if (cb) {
       // watch(source, cb)
+      // * 新值
       const newValue = runner()
       if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
         // cleanup before running cb again
         if (cleanup) {
           cleanup()
         }
+        // * 执行 cb, 三个参数：新值、旧值、无效处理函数
         callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
           newValue,
           // pass undefined as the old value when it's changed for the first time
           oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
           onInvalidate
         ])
+        // * 重置旧值
         oldValue = newValue
       }
     } else {
       // watchEffect
+      // * 立即执行
       runner()
     }
   }
@@ -271,13 +290,18 @@ function doWatch(
   // it is allowed to self-trigger (#1727)
   job.allowRecurse = !!cb
 
+  // ? 构建 scheduler 时序执行函数
   let scheduler: ReactiveEffectOptions['scheduler']
+  // * 同步 sync watcher, 当数据变化时同步执行回调函数
+  // ! queuePreFlushCb 和 queuePostRenderEffect 把回调函数推入到异步队列中。
   if (flush === 'sync') {
     scheduler = job
   } else if (flush === 'post') {
     scheduler = () => queuePostRenderEffect(job, instance && instance.suspense)
   } else {
     // default: 'pre'
+    // 默认 pre， 回调函数通过 queuePreFlushCb 的方式组件更新之前执行，
+    // 如果没有挂载，同步执行确保在组件更新之前执行
     scheduler = () => {
       if (!instance || instance.isMounted) {
         queuePreFlushCb(job)
@@ -288,7 +312,7 @@ function doWatch(
       }
     }
   }
-
+  // 创建 effect 函数
   const runner = effect(getter, {
     lazy: true,
     onTrack,
@@ -299,15 +323,18 @@ function doWatch(
   recordInstanceBoundEffect(runner, instance)
 
   // initial run
+  // 初始化执行
   if (cb) {
     if (immediate) {
       job()
     } else {
+      // 旧值
       oldValue = runner()
     }
   } else if (flush === 'post') {
     queuePostRenderEffect(runner, instance && instance.suspense)
   } else {
+    // 没有 cb 立即执行
     runner()
   }
 
