@@ -150,7 +150,7 @@ export type Component<
 export { ComponentOptions }
 
 type LifecycleHook = Function[] | null
-
+// ! 生命周期钩子
 export const enum LifecycleHooks {
   BEFORE_CREATE = 'bc',
   CREATED = 'c',
@@ -441,7 +441,7 @@ export function createComponentInstance(
     withProxy: null,
     // 响应式相关对象
     effects: null,
-    // 依赖注入相关
+    // 依赖注入相关：指向父组件实例的 provides 对象
     provides: parent ? parent.provides : Object.create(appContext.provides),
     // 渲染代理的属性访问缓存
     accessCache: null!,

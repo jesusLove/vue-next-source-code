@@ -81,19 +81,21 @@ export interface ParserContext {
   inPre: boolean // HTML <pre> tag, preserve whitespaces
   inVPre: boolean // v-pre, do not process directives and interpolations
 }
-
+// ! 生成 AST
 export function baseParse(
   content: string,
   options: ParserOptions = {}
 ): RootNode {
+  // ? 创建解析上下文
   const context = createParserContext(content, options)
   const start = getCursor(context)
+  // ? 解析子节点，并创建 AST
   return createRoot(
     parseChildren(context, TextModes.DATA, []),
     getSelection(context, start)
   )
 }
-
+// ! 创建解析上下文
 function createParserContext(
   content: string,
   rawOptions: ParserOptions

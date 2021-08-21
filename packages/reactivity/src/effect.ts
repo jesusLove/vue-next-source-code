@@ -295,6 +295,7 @@ export function trigger(
   // ? 执行 effect
   const run = (effect: ReactiveEffect) => {
     if (__DEV__ && effect.options.onTrigger) {
+      // 执行 onTrigger
       effect.options.onTrigger({
         effect,
         target,
@@ -311,6 +312,6 @@ export function trigger(
       effect()
     }
   }
-  // ? 执行所有的 effect
+  // ? 遍历执行 effect
   effects.forEach(run)
 }
