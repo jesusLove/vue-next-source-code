@@ -15,7 +15,7 @@ import { createVNode, cloneVNode, VNode } from './vnode'
 import { RootHydrateFunction } from './hydration'
 import { devtoolsInitApp, devtoolsUnmountApp } from './devtools'
 import { version } from '.'
-
+// ! App 对象接口定义
 export interface App<HostElement = any> {
   version: string
   config: AppConfig
@@ -46,7 +46,7 @@ export type OptionMergeFunction = (
   instance: any,
   key: string
 ) => any
-
+// ! App 全局配置对象接口
 export interface AppConfig {
   // @private
   readonly isNativeTag?: (tag: string) => boolean
@@ -66,7 +66,7 @@ export interface AppConfig {
     trace: string
   ) => void
 }
-
+// ! App 上下文对象接口
 export interface AppContext {
   app: App // for devtools
   config: AppConfig
@@ -85,7 +85,7 @@ export interface AppContext {
    */
   reload?: () => void
 }
-
+// ! 插件类型定义，对象需要有 install 方法 或者为 函数
 type PluginInstallFunction = (app: App, ...options: any[]) => any
 
 export type Plugin =
@@ -94,6 +94,7 @@ export type Plugin =
       install: PluginInstallFunction
     }
 
+// ! 应用上下文：包含 app 实例对象；config 全局配置；mixins 混入；注册的组件 & 命令；全局 provides。
 export function createAppContext(): AppContext {
   return {
     app: null as any,
@@ -117,38 +118,35 @@ export type CreateAppFunction<HostElement> = (
   rootComponent: Component,
   rootProps?: Data | null
 ) => App<HostElement>
-
 let uid = 0
-// 创建 App
+// ! 创建 App
 export function createAppAPI<HostElement>(
   render: RootRenderFunction,
   hydrate?: RootHydrateFunction
 ): CreateAppFunction<HostElement> {
-  // 返回 createApp 函数
+  // ? 返回 createApp 函数
   return function createApp(rootComponent, rootProps = null) {
     if (rootProps != null && !isObject(rootProps)) {
       __DEV__ && warn(`root props passed to app.mount() must be an object.`)
       rootProps = null
     }
-
+    // ? App 上下文
     const context = createAppContext()
+    // ? 存储安装的插件
     const installedPlugins = new Set()
-
+    // ? 是否挂载
     let isMounted = false
-    // app 对象，定义一些方法和属性
+    // ? app 对象，定义一些方法和属性
     const app: App = (context.app = {
       _uid: uid++,
       _component: rootComponent as ConcreteComponent,
       _props: rootProps,
       _container: null,
       _context: context,
-
       version,
-
       get config() {
         return context.config
       },
-
       set config(v) {
         if (__DEV__) {
           warn(
@@ -156,8 +154,10 @@ export function createAppAPI<HostElement>(
           )
         }
       },
-
+      // ? 注册 plugin
       use(plugin: Plugin, ...options: any[]) {
+        // * 实现原理：installedPlugins 缓存 Set 集合，插件注册后会添加到改 Set 中，下次添加前先验证是否添加过。
+        // * 两种情况：对象 和 函数；前者调用插件的 install 函数传入 app, options; 后者调用函数本身
         if (installedPlugins.has(plugin)) {
           __DEV__ && warn(`Plugin has already been applied to target app.`)
         } else if (plugin && isFunction(plugin.install)) {
@@ -174,7 +174,7 @@ export function createAppAPI<HostElement>(
         }
         return app
       },
-
+      // ? 混入
       mixin(mixin: ComponentOptions) {
         if (__FEATURE_OPTIONS_API__) {
           if (!context.mixins.includes(mixin)) {
@@ -195,7 +195,7 @@ export function createAppAPI<HostElement>(
         }
         return app
       },
-
+      // ? 全局组件
       component(name: string, component?: Component): any {
         if (__DEV__) {
           validateComponentName(name, context.config)
@@ -209,7 +209,7 @@ export function createAppAPI<HostElement>(
         context.components[name] = component
         return app
       },
-
+      // ? 全局 directive
       directive(name: string, directive?: Directive) {
         if (__DEV__) {
           validateDirectiveName(name)
@@ -224,19 +224,17 @@ export function createAppAPI<HostElement>(
         context.directives[name] = directive
         return app
       },
-      // 支持跨平台渲染，所以该 mount 是可以跨平台的
-      // 标准的跨平台流程
+      // ? 支持跨平台渲染，所以该 mount 是可以跨平台的；标准的跨平台流程
       mount(rootContainer: HostElement, isHydrate?: boolean): any {
         if (!isMounted) {
-          // 1. 创建 VNode，根组件
-          // 对抽象事物的描述
+          // * 1. 创建 app vnode
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
           )
+          // ? 保存 app 上下文到根节点中
           // store app context on the root VNode.
           // this will be set on the root instance on initial mount.
-          // 保存 app 上下文到根节点中
           vnode.appContext = context
 
           // HMR root reload
@@ -271,7 +269,7 @@ export function createAppAPI<HostElement>(
           )
         }
       },
-
+      // ? 卸载
       unmount() {
         if (isMounted) {
           render(null, app._container)
@@ -282,7 +280,7 @@ export function createAppAPI<HostElement>(
           warn(`Cannot unmount an app that is not mounted.`)
         }
       },
-
+      // ? 全局定义 provides
       provide(key, value) {
         if (__DEV__ && (key as string | symbol) in context.provides) {
           warn(
@@ -297,7 +295,6 @@ export function createAppAPI<HostElement>(
         return app
       }
     })
-
     return app
   }
 }

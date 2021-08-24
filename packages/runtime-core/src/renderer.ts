@@ -417,8 +417,8 @@ function baseCreateRenderer(
   createHydrationFns: typeof createHydrationFunctions
 ): HydrationRenderer
 
-// implementation
 // ! 创建渲染器实现函数
+// implementation
 function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions
@@ -447,7 +447,7 @@ function baseCreateRenderer(
 
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
-  // 挂载 DOM 或者 更新 DOM
+  // !挂载 DOM 或者 更新 DOM
   // n1 旧节点，n2 新节点，container 挂载容器
   const patch: PatchFn = (
     n1,
@@ -1355,7 +1355,7 @@ function baseCreateRenderer(
       instance.vnode = n2
     }
   }
-
+  // ! 设置渲染副作用
   const setupRenderEffect: SetupRenderEffectFn = (
     instance,
     initialVNode,
@@ -2243,7 +2243,7 @@ function baseCreateRenderer(
     }
     return hostNextSibling((vnode.anchor || vnode.el)!)
   }
-  // 渲染创建好的 VNode
+  // ! 渲染创建好的 VNode
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode == null) {
       // 销毁组件
@@ -2254,6 +2254,7 @@ function baseCreateRenderer(
       // ! 创建或者更新组件
       patch(container._vnode || null, vnode, container)
     }
+    // post 任务回调
     flushPostFlushCbs()
     // 缓存 VNode 节点，表示已经渲染
     container._vnode = vnode

@@ -193,6 +193,7 @@ export type InternalRenderFunction = {
 /**
  * We expose a subset of properties on the internal instance as they are
  * useful for advanced external libraries and tools.
+ * ! 组件实例接口
  */
 export interface ComponentInternalInstance {
   uid: number
@@ -535,7 +536,7 @@ export function createComponentInstance(
 
   return instance
 }
-
+// ! 当前组件实例
 export let currentInstance: ComponentInternalInstance | null = null
 
 export const getCurrentInstance: () => ComponentInternalInstance | null = () =>

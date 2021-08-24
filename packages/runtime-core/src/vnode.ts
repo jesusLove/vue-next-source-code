@@ -50,6 +50,7 @@ export const Text = Symbol(__DEV__ ? 'Text' : undefined)
 export const Comment = Symbol(__DEV__ ? 'Comment' : undefined)
 export const Static = Symbol(__DEV__ ? 'Static' : undefined)
 
+// ! 虚拟 Node 类型
 export type VNodeTypes =
   | string
   | VNode
@@ -115,7 +116,7 @@ export type VNodeNormalizedChildren =
   | VNodeArrayChildren
   | RawSlots
   | null
-
+// ! VNode 接口定义
 export interface VNode<
   HostNode = RendererNode,
   HostElement = RendererElement,
@@ -253,11 +254,11 @@ export function createBlock(
   }
   return vnode
 }
-
+// ! 是否为 VNode，通过 __v_isVNode 属性判断
 export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
 }
-
+// ! 判断两个VNode 类型是否相同：同时满足 type 和 key 相同
 export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
   if (
     __DEV__ &&
@@ -313,7 +314,7 @@ const normalizeRef = ({ ref }: VNodeProps): VNodeNormalizedRefAtom | null => {
 export const createVNode = (__DEV__
   ? createVNodeWithArgsTransform
   : _createVNode) as typeof _createVNode
-
+// ! 创建 VNode
 function _createVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,

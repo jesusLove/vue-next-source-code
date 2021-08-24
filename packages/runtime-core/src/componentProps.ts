@@ -268,7 +268,7 @@ export function updateProps(
     validateProps(props, instance)
   }
 }
-
+// ! 设置 props
 function setFullProps(
   instance: ComponentInternalInstance,
   rawProps: Data | null,
