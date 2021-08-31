@@ -1209,7 +1209,7 @@ function baseCreateRenderer(
       }
     }
   }
-  // 处理组件
+  // ! 处理组件：挂载 和 更新
   const processComponent = (
     n1: VNode | null,
     n2: VNode,
@@ -1222,6 +1222,7 @@ function baseCreateRenderer(
   ) => {
     if (n1 == null) {
       if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
+        // keep-alive
         ;(parentComponent!.ctx as KeepAliveContext).activate(
           n2,
           container,
@@ -1230,7 +1231,7 @@ function baseCreateRenderer(
           optimized
         )
       } else {
-        // 1. 挂载组件
+        // ? 1. 挂载组件
         mountComponent(
           n2,
           container,
@@ -1242,7 +1243,7 @@ function baseCreateRenderer(
         )
       }
     } else {
-      // 2. 更新组件
+      // ? 2. 更新组件
       updateComponent(n1, n2, optimized)
     }
   }
@@ -1282,8 +1283,7 @@ function baseCreateRenderer(
       startMeasure(instance, `init`)
     }
     // ? 2. 初始化组件，建立 Proxy.
-    // 初始化 Props / Slots
-    // 设置有状态组件
+    // * 初始化 Props / Slots；设置有状态组件
     setupComponent(instance)
     if (__DEV__) {
       endMeasure(instance, `init`)
@@ -1356,6 +1356,7 @@ function baseCreateRenderer(
     }
   }
   // ! 设置渲染副作用
+  // ? 两种情况：初次挂载 和 更新
   const setupRenderEffect: SetupRenderEffectFn = (
     instance,
     initialVNode,
@@ -1368,13 +1369,13 @@ function baseCreateRenderer(
     // create reactive effect for rendering
     // ! 创建一个渲染 effect。
     instance.update = effect(function componentEffect() {
+      // ? 两种情况：初次挂载 或 更新
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
         const { bm, m, parent } = instance
         // ? 调用生命周期方法
-        // beforeMount hook
-        // 组件挂载阶段钱
+        // * beforeMount hook 组件挂载阶段
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -1388,7 +1389,7 @@ function baseCreateRenderer(
           startMeasure(instance, `render`)
         }
         // ? 创建组件内部的 VNode
-        // 此 VNode 不是组件的 VNode 而是组件内部的 VNode
+        // * 此 VNode 不是组件的 VNode 而是组件内部的 VNode
         const subTree = (instance.subTree = renderComponentRoot(instance))
         if (__DEV__) {
           endMeasure(instance, `render`)
@@ -1426,8 +1427,7 @@ function baseCreateRenderer(
           }
           initialVNode.el = subTree.el
         }
-        // mounted hook
-        // 组件挂载后
+        // * mounted hook 组件挂载后
         if (m) {
           queuePostRenderEffect(m, parentSuspense)
         }
@@ -1516,7 +1516,7 @@ function baseCreateRenderer(
           // to child component's vnode
           updateHOCHostEl(instance, nextTree.el)
         }
-        // updated hook
+        // * updated hook
         if (u) {
           queuePostRenderEffect(u, parentSuspense)
         }

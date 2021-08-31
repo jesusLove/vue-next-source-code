@@ -227,7 +227,7 @@ export function createAppAPI<HostElement>(
       // ? 支持跨平台渲染，所以该 mount 是可以跨平台的；标准的跨平台流程
       mount(rootContainer: HostElement, isHydrate?: boolean): any {
         if (!isMounted) {
-          // * 1. 创建 app vnode
+          // ? 1. 创建 app vnode
           const vnode = createVNode(
             rootComponent as ConcreteComponent,
             rootProps
@@ -243,11 +243,10 @@ export function createAppAPI<HostElement>(
               render(cloneVNode(vnode), rootContainer)
             }
           }
-
           if (isHydrate && hydrate) {
             hydrate(vnode as VNode<Node, Element>, rootContainer as any)
           } else {
-            // 2. 渲染 Node 到 容器中
+            // ? 渲染 Node 到 容器中
             render(vnode, rootContainer)
           }
           isMounted = true

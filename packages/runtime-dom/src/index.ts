@@ -67,9 +67,8 @@ export const createApp = ((...args) => {
   // !重写 mount 方法，为什么重写该方法？
   // ? mount 默认是与平台无关的，重写为了在 浏览器 平台运行，兼容 vue2.0 模板
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
-    // 1. 获取挂载容器Element，标准化容器
-    // 字符串：document.querySelector()
-    // 其他：直接返回 container。
+    // ? 1. 获取挂载容器Element，标准化容器
+    // 字符串：document.querySelector(); 其他，直接返回 container。
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
     const component = app._component

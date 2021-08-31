@@ -413,7 +413,7 @@ export function createComponentInstance(
   // * 如果存在 parent 实例，继承 AppContext
   const appContext =
     (parent ? parent.appContext : vnode.appContext) || emptyAppContext
-
+  // * 实例对象
   const instance: ComponentInternalInstance = {
     // 组件唯一 ID
     uid: uid++,
@@ -519,15 +519,15 @@ export function createComponentInstance(
     // error captured
     ec: null
   }
-  // 初始化渲染上下文
+  // * 初始化渲染上下文
   if (__DEV__) {
     instance.ctx = createRenderContext(instance)
   } else {
     instance.ctx = { _: instance }
   }
-  // 初始化根组件指针
+  // * 初始化根组件指针
   instance.root = parent ? parent.root : instance
-  // 初始化派发事件
+  // * 初始化派发事件
   instance.emit = emit.bind(null, instance)
 
   if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
@@ -732,7 +732,6 @@ export function registerRuntimeCompiler(_compile: any) {
 // * 1. compile 和 组件 template 存在，render 不存在时 => runtime-compiled 版本会在 JS 运行时进行模板编译生成 render 函数。
 // * 2. compile 和 render 方法不存在，template 存在的情况，由于没有 compile 用的是 runtime-only 的版本。
 // * 给用户报警告，用运行时需要 runtime-compiled 版本的 Vue.js
-// * 3. 
 function finishComponentSetup(
   instance: ComponentInternalInstance,
   isSSR: boolean

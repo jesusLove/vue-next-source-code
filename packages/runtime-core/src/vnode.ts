@@ -40,6 +40,7 @@ import { NULL_DYNAMIC_COMPONENT } from './helpers/resolveAssets'
 import { hmrDirtyComponents } from './hmr'
 import { setCompiledSlotRendering } from './helpers/renderSlot'
 
+// ! 常量定义 Fragment，Text，Comment，Static 用来描述组件类型
 export const Fragment = (Symbol(__DEV__ ? 'Fragment' : undefined) as any) as {
   __isFragment: true
   new (): {
@@ -50,7 +51,8 @@ export const Text = Symbol(__DEV__ ? 'Text' : undefined)
 export const Comment = Symbol(__DEV__ ? 'Comment' : undefined)
 export const Static = Symbol(__DEV__ ? 'Static' : undefined)
 
-// ! 虚拟 Node 类型
+// ! 虚拟 Node type 类型
+// ? Type 取值 : 字符串（div, span)、VNode、组件Component、文本（Text）等
 export type VNodeTypes =
   | string
   | VNode
@@ -61,7 +63,7 @@ export type VNodeTypes =
   | typeof Fragment
   | typeof TeleportImpl
   | typeof SuspenseImpl
-
+// ! ref 类型：字符串，Ref 对象 或者 函数
 export type VNodeRef =
   | string
   | Ref
@@ -84,12 +86,13 @@ export type VNodeHook =
   | VNodeMountHook[]
   | VNodeUpdateHook[]
 
+// ! 参数类型。例如：节点对应的 key 和 ref。
 // https://github.com/microsoft/TypeScript/issues/33099
 export type VNodeProps = {
   key?: string | number
   ref?: VNodeRef
 
-  // vnode hooks
+  // vnode hooks 钩子函数
   onVnodeBeforeMount?: VNodeMountHook | VNodeMountHook[]
   onVnodeMounted?: VNodeMountHook | VNodeMountHook[]
   onVnodeBeforeUpdate?: VNodeUpdateHook | VNodeUpdateHook[]
@@ -123,29 +126,29 @@ export interface VNode<
   ExtraProps = { [key: string]: any }
 > {
   /**
-   * @internal
+   * @internal 内部属性，VNode 类型标识
    */
   __v_isVNode: true
   /**
    * @internal
    */
   [ReactiveFlags.SKIP]: true
-  type: VNodeTypes
-  props: (VNodeProps & ExtraProps) | null
-  key: string | number | null
-  ref: VNodeNormalizedRef | null
+  type: VNodeTypes // * 类型
+  props: (VNodeProps & ExtraProps) | null // * 节点属性配置，如 class, key, ref 等
+  key: string | number | null // * key 值
+  ref: VNodeNormalizedRef | null // * ref 值
   scopeId: string | null // SFC only
-  children: VNodeNormalizedChildren
-  component: ComponentInternalInstance | null
-  dirs: DirectiveBinding[] | null
+  children: VNodeNormalizedChildren // * 子节点
+  component: ComponentInternalInstance | null // * 组件实例
+  dirs: DirectiveBinding[] | null 
   transition: TransitionHooks<HostElement> | null
 
-  // DOM
-  el: HostNode | null
-  anchor: HostNode | null // fragment anchor
-  target: HostElement | null // teleport target
-  targetAnchor: HostNode | null // teleport target anchor
-  staticCount: number // number of elements contained in a static vnode
+  // * DOM 相关
+  el: HostNode | null // * 节点渲染的真实 DOM 节点
+  anchor: HostNode | null // * fragment anchor 判断锚点
+  target: HostElement | null // * teleport target
+  targetAnchor: HostNode | null // * teleport target anchor
+  staticCount: number // * number of elements contained in a static vnode
 
   // suspense
   suspense: SuspenseBoundary | null
@@ -159,6 +162,7 @@ export interface VNode<
   dynamicChildren: VNode[] | null
 
   // application root node only
+  // * 应用的执行上下文
   appContext: AppContext | null
 }
 
@@ -258,7 +262,7 @@ export function createBlock(
 export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
 }
-// ! 判断两个VNode 类型是否相同：同时满足 type 和 key 相同
+// ! 判断 VNode 是否相同：同时满足 type 和 key 相同
 export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
   if (
     __DEV__ &&
@@ -455,7 +459,7 @@ function _createVNode(
 
   return vnode
 }
-
+// ! VNode 克隆
 export function cloneVNode<T, U>(
   vnode: VNode<T, U>,
   extraProps?: Data & VNodeProps | null,
@@ -551,7 +555,7 @@ export function createCommentVNode(
     ? (openBlock(), createBlock(Comment, null, text))
     : createVNode(Comment, null, text)
 }
-
+// ! 标准化 VNode
 export function normalizeVNode(child: VNodeChild): VNode {
   if (child == null || typeof child === 'boolean') {
     // empty placeholder
@@ -577,22 +581,22 @@ export function cloneIfMounted(child: VNode): VNode {
 export function normalizeChildren(vnode: VNode, children: unknown) {
   let type = 0
   const { shapeFlag } = vnode
-  if (children == null) {
-    children = null
-  } else if (isArray(children)) {
+  if (children == null) { 
+    children = null // * children 为空的情况
+  } else if (isArray(children)) { // * childern 为数组
     type = ShapeFlags.ARRAY_CHILDREN
-  } else if (typeof children === 'object') {
-    if (shapeFlag & ShapeFlags.ELEMENT || shapeFlag & ShapeFlags.TELEPORT) {
+  } else if (typeof children === 'object') { // * children 为对象
+    if (shapeFlag & ShapeFlags.ELEMENT || shapeFlag & ShapeFlags.TELEPORT) { // * 普通元素或者 TELEPORT
       // Normalize slot to plain children for plain element and Teleport
-      const slot = (children as any).default
+      const slot = (children as any).default // * 读取 默认插槽 slot
       if (slot) {
         // _c marker is added by withCtx() indicating this is a compiled slot
         slot._c && setCompiledSlotRendering(1)
-        normalizeChildren(vnode, slot())
+        normalizeChildren(vnode, slot()) // * 默认插槽存在，递归插槽组件
         slot._c && setCompiledSlotRendering(-1)
       }
       return
-    } else {
+    } else { // * 其他情况
       type = ShapeFlags.SLOTS_CHILDREN
       const slotFlag = (children as RawSlots)._
       if (!slotFlag && !(InternalObjectKey in children!)) {
@@ -612,10 +616,10 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
         }
       }
     }
-  } else if (isFunction(children)) {
+  } else if (isFunction(children)) { // * 函数
     children = { default: children, _ctx: currentRenderingInstance }
     type = ShapeFlags.SLOTS_CHILDREN
-  } else {
+  } else { // * 其他情况
     children = String(children)
     // force teleport children to array so it can be moved around
     if (shapeFlag & ShapeFlags.TELEPORT) {
