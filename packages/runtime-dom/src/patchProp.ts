@@ -12,7 +12,8 @@ type DOMRendererOptions = RendererOptions<Node, Element>
 
 export const forcePatchProp: DOMRendererOptions['forcePatchProp'] = (_, key) =>
   key === 'value'
-
+// ! 与平台相关
+// ! 处理 class 、style 、event 、props 、attrs
 export const patchProp: DOMRendererOptions['patchProp'] = (
   el,
   key,

@@ -55,7 +55,7 @@ export function removeEventListener(
 ) {
   el.removeEventListener(event, handler, options)
 }
-
+// ! 处理 Event 事件
 export function patchEvent(
   el: Element & { _vei?: Record<string, Invoker | undefined> },
   rawName: string,

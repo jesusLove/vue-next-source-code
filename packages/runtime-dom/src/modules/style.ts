@@ -2,19 +2,23 @@ import { isString, hyphenate, capitalize, isArray } from '@vue/shared'
 import { camelize } from '@vue/runtime-core'
 
 type Style = string | Record<string, string | string[]> | null
-
+// ! 处理 Style 
 export function patchStyle(el: Element, prev: Style, next: Style) {
   const style = (el as HTMLElement).style
   if (!next) {
+    // ? 无新 style，直接移除 el.style
     el.removeAttribute('style')
   } else if (isString(next)) {
+    // ? next 为字符串且与旧 style 不同
     if (prev !== next) {
       style.cssText = next
     }
   } else {
+    // ? next 为对象，遍历对象属性
     for (const key in next) {
       setStyle(style, key, next[key])
     }
+    // ? 移除旧的 style: 即 next 中没有，prev 有的 style
     if (prev && !isString(prev)) {
       for (const key in prev) {
         if (next[key] == null) {
@@ -26,15 +30,17 @@ export function patchStyle(el: Element, prev: Style, next: Style) {
 }
 
 const importantRE = /\s*!important$/
-
+// ! 设置 style
 function setStyle(
   style: CSSStyleDeclaration,
   name: string,
   val: string | string[]
 ) {
+  // ? val 为数组，遍历、递归
   if (isArray(val)) {
     val.forEach(v => setStyle(style, name, v))
   } else {
+    // ?
     if (name.startsWith('--')) {
       // custom property definition
       style.setProperty(name, val)

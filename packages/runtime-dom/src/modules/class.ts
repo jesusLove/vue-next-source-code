@@ -1,5 +1,6 @@
 import { ElementWithTransition } from '../components/Transition'
 
+// ! 处理 Class
 // compiler should normalize class + :class bindings on the same element
 // into a single binding ['staticClass', dynamic]
 export function patchClass(el: Element, value: string | null, isSVG: boolean) {
