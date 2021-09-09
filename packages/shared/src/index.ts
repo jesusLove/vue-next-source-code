@@ -24,26 +24,26 @@ export const babelParserDefaultPlugins = [
   'optionalChaining',
   'nullishCoalescingOperator'
 ] as const
-
+// ! 定义空对象：开发模式下方式修改使用 Object.freeze() 方法冻结对象。
 export const EMPTY_OBJ: { readonly [key: string]: any } = __DEV__
   ? Object.freeze({})
   : {}
 export const EMPTY_ARR = __DEV__ ? Object.freeze([]) : []
-
+// ! 空方法
 export const NOOP = () => {}
 
 /**
  * Always return false.
  */
 export const NO = () => false
-
+// ! onXXX 字符串，用于处理 onClick 事件
 const onRE = /^on[^a-z]/
 export const isOn = (key: string) => onRE.test(key)
 
 export const isModelListener = (key: string) => key.startsWith('onUpdate:')
 
 export const extend = Object.assign
-
+// ! 移除数组元素
 export const remove = <T>(arr: T[], el: T) => {
   const i = arr.indexOf(el)
   if (i > -1) {
