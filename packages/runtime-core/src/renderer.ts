@@ -89,11 +89,13 @@ export type RootRenderFunction<HostElement = RendererElement> = (
   vnode: VNode | null,
   container: HostElement
 ) => void
-
+// ! 渲染器 Options
+// ! DOM 相关操作
 export interface RendererOptions<
   HostNode = RendererNode,
   HostElement = RendererElement
 > {
+  // ?处理 props
   patchProp(
     el: HostElement,
     key: string,
@@ -108,6 +110,7 @@ export interface RendererOptions<
   forcePatchProp?(el: HostElement, key: string): boolean
   insert(el: HostNode, parent: HostElement, anchor?: HostNode | null): void
   remove(el: HostNode): void
+  // ? 创建 Element、Text、Comment
   createElement(
     type: string,
     isSVG?: boolean,
@@ -115,6 +118,7 @@ export interface RendererOptions<
   ): HostElement
   createText(text: string): HostNode
   createComment(text: string): HostNode
+  // ? 设置
   setText(node: HostNode, text: string): void
   setElementText(node: HostElement, text: string): void
   parentNode(node: HostNode): HostElement | null
@@ -427,7 +431,9 @@ function baseCreateRenderer(
   if (__ESM_BUNDLER__ && !__TEST__) {
     initFeatureFlags()
   }
-
+  // ? 这个方法在 runtime-dom 中传入与平台相关
+  // ? rumtime-dom/src/nodeOps.ts 第一节点操作
+  // ? rumtime-dom/src/patchProp.ts 定义 patchProp 和 forcePatchProp 函数
   const {
     insert: hostInsert,
     remove: hostRemove,
@@ -460,9 +466,11 @@ function baseCreateRenderer(
     optimized = false
   ) => {
     // patching & not same type, unmount old tree
+    // ? 存在旧 vnode 并且 n1 和 n2 类型不同，则将 n1 从 container 卸载
+    // ? 同时将 n1 置为 null，接下来接 n2 挂载到 container 中。
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
-      unmount(n1, parentComponent, parentSuspense, true)
+      unmount(n1, parentComponent, parentSuspense, true) // * 卸载 n1
       n1 = null
     }
 
@@ -472,6 +480,7 @@ function baseCreateRenderer(
     }
 
     const { type, ref, shapeFlag } = n2
+    // ? 处理不同类型的 vnode
     switch (type) {
       case Text:
         processText(n1, n2, container, anchor)
@@ -500,7 +509,7 @@ function baseCreateRenderer(
         break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
-          // 处理普通元素
+          // ? 处理普通元素
           processElement(
             n1,
             n2,
@@ -552,12 +561,12 @@ function baseCreateRenderer(
         }
     }
 
-    // set ref
+    // ? 设置 ref 
     if (ref != null && parentComponent) {
       setRef(ref, n1 && n1.ref, parentSuspense, n2)
     }
   }
-  // ? 处理 文本
+  // ! 处理 文本
   const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
     // * 没有旧节点
     if (n1 == null) {
@@ -577,7 +586,7 @@ function baseCreateRenderer(
       }
     }
   }
-  // ? 注释 Node
+  // ! 注释 Node
   const processCommentNode: ProcessTextOrCommentFn = (
     n1,
     n2,
@@ -595,7 +604,7 @@ function baseCreateRenderer(
       n2.el = n1.el
     }
   }
-  // ? 挂载静态节点
+  // ! 静态节点：增、修改、移动、删除
   const mountStaticNode = (
     n2: VNode,
     container: RendererElement,
@@ -611,10 +620,6 @@ function baseCreateRenderer(
       isSVG
     )
   }
-
-  /**
-   * Dev / HMR only
-   */
   const patchStaticNode = (
     n1: VNode,
     n2: VNode,
@@ -662,7 +667,7 @@ function baseCreateRenderer(
     }
     hostRemove(anchor!)
   }
-  // ? 处理 Element
+  // ! 处理 Element: 初次挂载 和 更新
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -693,7 +698,7 @@ function baseCreateRenderer(
     }
   }
   // ! 挂载普通元素
-  // 创建 DOM 元素节点；处理 Props; 处理 children；挂载节点到DOM中
+  // ! 创建 DOM 元素节点；处理 Props; 处理 children；挂载节点到DOM中
   const mountElement = (
     vnode: VNode,
     container: RendererElement,
@@ -714,19 +719,19 @@ function baseCreateRenderer(
       patchFlag,
       dirs
     } = vnode
-    // 1. 创建 DOM 元素
+    // ? 1. 创建 DOM 元素
     if (
       !__DEV__ &&
       vnode.el &&
       hostCloneNode !== undefined &&
       patchFlag === PatchFlags.HOISTED
     ) {
-      // If a vnode has non-null el, it means it's being reused.
-      // Only static vnodes can be reused, so its mounted DOM nodes should be
-      // exactly the same, and we can simply do a clone here.
-      // only do this in production since cloned trees cannot be HMR updated.
+      // ? 如果 vnode 的 el 为 null，代表 vnode 被复用。
+      // ? 只有静态 vnodes 可以被复用，只需克隆后挂载相同的 DOM 节点。
+      // ? 只在 production 中使用克隆否则无法进行 HMR 更新 
       el = vnode.el = hostCloneNode(vnode.el)
     } else {
+      // * 创建 Element
       el = vnode.el = hostCreateElement(
         vnode.type as string,
         isSVG,
@@ -737,10 +742,10 @@ function baseCreateRenderer(
       // being already rendered, e.g. `<select value>`
       // 处理子节点
       if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
-        // 如果是 文本
+        // ? 如果是 文本
         hostSetElementText(el, vnode.children as string)
       } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        // 如果是数组
+        // ? 如果是数组，遍历 children 递归调用 patch 方法
         mountChildren(
           vnode.children as VNodeArrayChildren,
           el,
@@ -756,7 +761,7 @@ function baseCreateRenderer(
         invokeDirectiveHook(vnode, null, parentComponent, 'created')
       }
       // props
-      // 2. 处理 Props
+      // ? 2. 处理 Props
       if (props) {
         for (const key in props) {
           if (!isReservedProp(key)) {
@@ -803,7 +808,7 @@ function baseCreateRenderer(
     if (needCallTransitionHooks) {
       transition!.beforeEnter(el)
     }
-    // 4. 挂载节点
+    // ? 4. 插入节点
     hostInsert(el, container, anchor)
     if (
       (vnodeHook = props && props.onVnodeMounted) ||
@@ -849,7 +854,7 @@ function baseCreateRenderer(
       }
     }
   }
-  // 递归挂载子元素
+  // ! 递归挂载子元素
   const mountChildren: MountChildrenFn = (
     children,
     container,
@@ -876,7 +881,7 @@ function baseCreateRenderer(
       )
     }
   }
-
+  // ! 更新普通元素
   const patchElement = (
     n1: VNode,
     n2: VNode,
@@ -885,6 +890,7 @@ function baseCreateRenderer(
     isSVG: boolean,
     optimized: boolean
   ) => {
+    // ? 读取旧的 el
     const el = (n2.el = n1.el!)
     let { patchFlag, dynamicChildren, dirs } = n2
     // #1426 take the old vnode's patch flag into account since user may clone a
@@ -1117,8 +1123,8 @@ function baseCreateRenderer(
       }
     }
   }
-  // ? 处理 Fragment 片段
-  // * el 指向哪里？
+  // ! 处理 Fragment 片段
+  // ! el 指向哪里？
   const processFragment = (
     n1: VNode | null,
     n2: VNode,
@@ -1355,8 +1361,7 @@ function baseCreateRenderer(
       instance.vnode = n2
     }
   }
-  // ! 设置渲染副作用
-  // ? 两种情况：初次挂载 和 更新
+  // ! 设置渲染副作用 两种情况：初次挂载 和 更新
   const setupRenderEffect: SetupRenderEffectFn = (
     instance,
     initialVNode,
@@ -1555,7 +1560,7 @@ function baseCreateRenderer(
     flushPreFlushCbs(undefined, instance.update)
   }
 
-  // 子节点比较
+  // !子节点比较
   const patchChildren: PatchChildrenFn = (
     n1,
     n2,
@@ -1658,7 +1663,7 @@ function baseCreateRenderer(
     }
   }
 
-  // 无 Key
+  // !无 Key
   const patchUnkeyedChildren = (
     c1: VNode[],
     c2: VNodeArrayChildren,
