@@ -38,6 +38,7 @@ export const enum PatchFlags {
   STYLE = 1 << 2,
 
   /**
+   * * 指定没有 class/style 动态 props 元素
    * Indicates an element that has non-class/style dynamic props.
    * Can also be on a component that has any dynamic props (includes
    * class/style). when this flag is present, the vnode also has a dynamicProps
@@ -54,22 +55,26 @@ export const enum PatchFlags {
   FULL_PROPS = 1 << 4,
 
   /**
+   * * 带事件的元素
    * Indicates an element with event listeners (which need to be attached
    * during hydration)
    */
   HYDRATE_EVENTS = 1 << 5,
 
   /**
+   * * 子序列不变的片段
    * Indicates a fragment whose children order doesn't change.
    */
   STABLE_FRAGMENT = 1 << 6,
 
   /**
+   * * 有 key 的片段
    * Indicates a fragment with keyed or partially keyed children
    */
   KEYED_FRAGMENT = 1 << 7,
 
   /**
+   * * 无 key 的片段
    * Indicates a fragment with unkeyed children.
    */
   UNKEYED_FRAGMENT = 1 << 8,
