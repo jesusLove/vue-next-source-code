@@ -570,7 +570,7 @@ export function setupComponent(
   isInSSRComponentSetup = isSSR
 
   const { props, children, shapeFlag } = instance.vnode
-  // ? 判断是否时有状态组件
+  // ? 判断是否有状态组件
   const isStateful = shapeFlag & ShapeFlags.STATEFUL_COMPONENT
   // ? 初始化 Props / Slots
   initProps(instance, props, isStateful, isSSR)
@@ -669,7 +669,7 @@ export function handleSetupResult(
   instance: ComponentInternalInstance,
   setupResult: unknown,
   isSSR: boolean
-) { 
+) {
   if (isFunction(setupResult)) {
     // setup returned an inline render function
     // ? 1. setup 返回渲染函数，直接赋值给 render 属性
@@ -775,7 +775,7 @@ function finishComponentSetup(
   }
 
   // support for 2.x options
-  // ? 兼容 2.x Options 
+  // ? 兼容 2.x Options
   if (__FEATURE_OPTIONS_API__) {
     currentInstance = instance
     pauseTracking()
@@ -787,7 +787,7 @@ function finishComponentSetup(
   // warn missing template/render
   if (__DEV__ && !Component.render && instance.render === NOOP) {
     /* istanbul ignore if */
-    // ? 没有 render 函数 和 模板，运行时版本 runtime-compiled 
+    // ? 没有 render 函数 和 模板，运行时版本 runtime-compiled
     if (!compile && Component.template) {
       warn(
         `Component provided template option but ` +

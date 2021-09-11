@@ -521,7 +521,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
-          // 组件处理
+          // ? 处理组件
           processComponent(
             n1,
             n2,
@@ -533,6 +533,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          // ? 处理 Teleport
           ;(type as typeof TeleportImpl).process(
             n1 as TeleportVNode,
             n2 as TeleportVNode,
@@ -545,6 +546,7 @@ function baseCreateRenderer(
             internals
           )
         } else if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
+          // ? 处理 suspense
           ;(type as typeof SuspenseImpl).process(
             n1,
             n2,
@@ -667,6 +669,7 @@ function baseCreateRenderer(
     }
     hostRemove(anchor!)
   }
+
   // ! 处理 Element: 初次挂载 和 更新
   const processElement = (
     n1: VNode | null,
