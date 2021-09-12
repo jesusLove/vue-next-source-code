@@ -377,12 +377,13 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   ): boolean {
     const { data, setupState, ctx } = instance
     if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
-      // 给 setupState 赋值
+      // ?给 setupState 赋值
       setupState[key] = value
     } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-      // 给 data 赋值
+      // ?给 data 赋值
       data[key] = value
     } else if (key in instance.props) {
+      // ?不能直接给 props 赋值
       __DEV__ &&
         warn(
           `Attempting to mutate prop "${key}". Props are readonly.`,
@@ -391,6 +392,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       return false
     }
     if (key[0] === '$' && key.slice(1) in instance) {
+      // ? 不能给 Vue 内部以 $ 开头的保留属性赋值
       __DEV__ &&
         warn(
           `Attempting to mutate public property "${key}". ` +
@@ -406,13 +408,13 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
           value
         })
       } else {
-        // 用户自定义数据赋值
+        // ? 用户自定义数据赋值
         ctx[key] = value
       }
     }
     return true
   },
-  // 依次判断属性是否存在
+  // ? 依次判断属性是否存在 ('msg' in this)
   has(
     {
       _: { data, setupState, accessCache, ctx, appContext, propsOptions }
