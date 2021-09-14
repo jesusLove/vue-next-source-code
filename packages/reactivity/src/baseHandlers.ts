@@ -87,6 +87,7 @@ function createGetter(isReadonly = false, shallow = false) {
   // Proxy 只劫持对象本身，并不会劫持子对象的变化
   return function get(target: Target, key: string | symbol, receiver: object) {
     // ? 1. __v_isReactive 属性值为 true: 表示该 target 响应的 proxy。
+    // ? 特殊的 Key 进行处理
     // 调用 isReactive 方法会走该判断
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
