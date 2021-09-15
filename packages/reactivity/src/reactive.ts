@@ -143,7 +143,7 @@ export type DeepReadonly<T> = T extends Builtin
                   : Readonly<T>
 
 /**
- * ! 只读 proxy
+ * ! 只读 proxy：无需依赖收集，因为他的属性不会被修改，所以不用跟踪变化。
  * Creates a readonly copy of the original object. Note the returned copy is not
  * made reactive, but `readonly` can be called on an already reactive object.
  */

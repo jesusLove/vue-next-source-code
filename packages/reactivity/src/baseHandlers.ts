@@ -123,6 +123,7 @@ function createGetter(isReadonly = false, shallow = false) {
     ) {
       return res
     }
+    // ! 只读时无需依赖收集
     // ! 进行依赖收集，非只读
     if (!isReadonly) {
       track(target, TrackOpTypes.GET, key) // ! <<=============== 依赖收集
@@ -232,7 +233,8 @@ export const mutableHandlers: ProxyHandler<object> = {
   has,
   ownKeys
 }
-
+// ! readonly handlers
+// !  不允许 set / delete 属性
 export const readonlyHandlers: ProxyHandler<object> = {
   get: readonlyGet,
   set(target, key) {

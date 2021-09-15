@@ -102,6 +102,15 @@ let uid = 0
 // ! 创建 effect
 // * 内部创建一个 reactiveEffect 函数，该函数就是响应式的副作用函数，当执行 trigger 派发通知是，执行的就是它。
 // * reactive 函数做了两件事：把全局的 activeEffect 执行它，然后执行被包装的原始函数 fn。
+
+// ! effectStatck 作用？
+// * effectStack 作用：嵌套 effect 的场景，activeEffect 执行栈顶 effect。
+
+// ! cleanup 作用？
+// * 在入栈前会执行 cleanup 函数清空 reactiveEffect 函数对应的依赖 。在执行 track 函数的时候，
+// * 除了收集当前激活的 effect 作为依赖，还通过 activeEffect.deps.push(dep) 把 dep 作为 activeEffect 的依赖，
+// * 这样在 cleanup 的时候我们就可以找到 effect 对应的 dep 了，然后把 effect 从这些 dep 中删除
+
 function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
