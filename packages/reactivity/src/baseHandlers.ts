@@ -185,9 +185,9 @@ function createSetter(shallow = false) {
         : hasOwn(target, key)
     // ? Reflect 值
     const result = Reflect.set(target, key, value, receiver)
-    // don't trigger if target is something up in the prototype chain of original
     // ? 如果 target 是原型链中，则不触发。
-    // 如果目标原型链也是一个 Proxy，通过 Reflect.set 修改原型链上的属性会再次触发 trigger,所以就没有必要触发两次 trigger
+    // ? 如果目标原型链也是一个 Proxy，
+    // ? 通过 Reflect.set 修改原型链上的属性会再次触发 trigger,所以就没有必要触发两次 trigger
     if (target === toRaw(receiver)) {
       if (!hadKey) {
         // * 不存在 key，进行 trigger add
