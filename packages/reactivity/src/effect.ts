@@ -303,9 +303,11 @@ export function trigger(
         oldTarget
       })
     }
+    // 调度执行
     if (effect.options.scheduler) {
       effect.options.scheduler(effect)
     } else {
+      // 执行effect
       effect()
     }
   }
