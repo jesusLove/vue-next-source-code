@@ -18,6 +18,7 @@ import { EMPTY_OBJ, isArray, isIntegerKey, isMap } from '@vue/shared'
   */
 type Dep = Set<ReactiveEffect>
 type KeyToDepMap = Map<any, Dep>
+// ! 原始数据对象 map
 const targetMap = new WeakMap<any, KeyToDepMap>()
 //  effect 对象接口
 export interface ReactiveEffect<T = any> {
@@ -56,6 +57,7 @@ export interface DebuggerEventExtraInfo {
 
 // effect 缓存栈
 const effectStack: ReactiveEffect[] = [] // 缓存数组
+// ! 当前激活的 effect
 let activeEffect: ReactiveEffect | undefined
 
 export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
@@ -157,8 +159,7 @@ function cleanup(effect: ReactiveEffect) {
   }
 }
 
-// !避免跨组件依赖内存泄露
-// *当 shouldTrack 为 false 时会停止 track
+// ! 是否允许依赖收集
 let shouldTrack = true
 const trackStack: boolean[] = []
 
@@ -184,24 +185,20 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
   }
-  // ? 1. 查询缓存: map<any, set>
+  // ? 查询缓存: map<any, set>， 每个 target 对应一个 depsMap
   let depsMap = targetMap.get(target)
-  // ? 2. 不存在创建
   if (!depsMap) {
     targetMap.set(target, (depsMap = new Map()))
   }
-  // ? 3. key 对应的 dep 集合。
-  // ? 一个 key 可以对应多个 effect 所以用 set 存放
+  // ? key 对应的 dep 集合。每个 key 对应一个 dep 集合
   let dep = depsMap.get(key)
   if (!dep) {
     depsMap.set(key, (dep = new Set()))
   }
-  // ? 4. 不存在则缓存
-  // ? 当前 effect 不存在 dep 中则添加进去
   if (!dep.has(activeEffect)) {
-    // 添加
+    // ? 收集当前激活的 effect 作为依赖
     dep.add(activeEffect)
-    // 5. 双向持有
+    // ? 当前激活的 effect 收集 dep 集合作为依赖
     activeEffect.deps.push(dep)
     if (__DEV__ && activeEffect.options.onTrack) {
       activeEffect.options.onTrack({

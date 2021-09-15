@@ -45,19 +45,20 @@ const readonlyGet = /*#__PURE__*/ createGetter(true)
 const shallowReadonlyGet = /*#__PURE__*/ createGetter(true, true)
 
 const arrayInstrumentations: Record<string, Function> = {}
-// instrument identity-sensitive Array methods to account for possible reactive
-// values
+// ! 调用数组以下方法时：会执行该代理函数，会对数组元素进行依赖收集。
 ;(['includes', 'indexOf', 'lastIndexOf'] as const).forEach(key => {
   const method = Array.prototype[key] as any
   arrayInstrumentations[key] = function(this: unknown[], ...args: unknown[]) {
+    // ? 把响应式对象转为原始数据
     const arr = toRaw(this)
     for (let i = 0, l = this.length; i < l; i++) {
+      // ? 依赖收集
       track(arr, TrackOpTypes.GET, i + '')
     }
-    // we run the method using the original args first (which may be reactive)
+    // ? 先尝试用参数本身，可能是响应式数据
     const res = method.apply(arr, args)
     if (res === -1 || res === false) {
-      // if that didn't work, run it again using raw values.
+      // ? 如果失败，在尝试呗参数转为原始数据
       return method.apply(arr, args.map(toRaw))
     } else {
       return res
@@ -88,17 +89,17 @@ function createGetter(isReadonly = false, shallow = false) {
   return function get(target: Target, key: string | symbol, receiver: object) {
     // ? 1. __v_isReactive 属性值为 true: 表示该 target 响应的 proxy。
     // ? 特殊的 Key 进行处理
-    // 调用 isReactive 方法会走该判断
+    // * 调用 isReactive 方法会走该判断
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
     } else if (key === ReactiveFlags.IS_READONLY) {
-      //调用 isReadonly 方法会走这个判断。
+      // * 调用 isReadonly 方法会走这个判断。
       return isReadonly
     } else if (
       key === ReactiveFlags.RAW &&
       receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
     ) {
-      // __v_raw 表示已经存在 proxy 直接读取 map 中的值。
+      // * __v_raw 表示已经存在 proxy 直接读取 map 中的值。
       return target
     }
     // ? 2. 参考：/vue/examples/demo/baseHandler.text.html。
@@ -122,9 +123,9 @@ function createGetter(isReadonly = false, shallow = false) {
     ) {
       return res
     }
-    // ! 进行依赖收集
+    // ! 进行依赖收集，非只读
     if (!isReadonly) {
-      track(target, TrackOpTypes.GET, key)
+      track(target, TrackOpTypes.GET, key) // ! <<=============== 依赖收集
     }
     // ? 4. 对 res 进行判断
     // * 浅层处理，直接返回 res，不进行 reactive 操作。
@@ -140,6 +141,8 @@ function createGetter(isReadonly = false, shallow = false) {
     }
     // * 返回值是否为对象，递归执行 reactive 将 res 变成响应式对象。
     // * 递归的原因：Proxy 只劫持对象本身，并不接触子对象的变化。
+    // !! 优点：只有在访问对象属性时，才会将子对象转为响应式的。
+    // !! Vue2.0 Object.defineProperty 是在初始化阶段已经递归。
     if (isObject(res)) {
       // Convert returned value into a proxy as well. we do the isObject check
       // here to avoid invalid value warning. Also need to lazy access readonly

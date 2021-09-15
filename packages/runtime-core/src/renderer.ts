@@ -1625,7 +1625,7 @@ function baseCreateRenderer(
 
     // ? 子节点三种可能：文本，数组，没有子节点
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
-      // * 文件节点的处理方式
+      // ? 文件节点的处理方式
       // * 卸载旧的设置新的
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         unmountChildren(c1 as VNode[], parentComponent, parentSuspense)
@@ -1635,9 +1635,8 @@ function baseCreateRenderer(
       }
     } else {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        // * 旧数组节点处理方式
+        // * 新旧序列都为数组
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          // * next children 也为数组。
           patchKeyedChildren(
             c1 as VNode[],
             c2 as VNodeArrayChildren,
@@ -1872,7 +1871,7 @@ function baseCreateRenderer(
           keyToNewIndexMap.set(nextChild.key, i)
         }
       }
-      // ? 正序变量旧子序列，找到匹配的节点更新，删除不在新子序列中的节点，判断是否有移动节点
+      // ? 正序遍历旧子序列，找到匹配的节点更新，删除不在新子序列中的节点，判断是否有移动节点
       // 5.2 loop through old children left to be patched and try to patch
       // matching nodes & remove nodes that are no longer present
       let j

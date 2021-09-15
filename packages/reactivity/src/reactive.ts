@@ -1,6 +1,5 @@
 import { isObject, toRawType, def } from '@vue/shared'
 // ? 定义 Proxy 的 Handler 函数
-// ?
 import {
   mutableHandlers,
   readonlyHandlers,
@@ -40,7 +39,7 @@ const enum TargetType {
   COMMON = 1,
   COLLECTION = 2
 }
-// 定义类型映射白名单
+// ! 定义类型映射白名单
 function targetTypeMap(rawType: string) {
   switch (rawType) {
     case 'Object':
@@ -120,7 +119,7 @@ export function shallowReactive<T extends object>(target: T): T {
     shallowCollectionHandlers
   )
 }
-// infer 标识在 extends 条件语句中待推断的类型变量。 《参考：/typescript/infer.test.ts 文件》
+// ! infer 标识在 extends 条件语句中待推断的类型变量。 《参考：/typescript/infer.test.ts 文件》
 type Primitive = string | number | boolean | bigint | symbol | undefined | null
 type Builtin = Primitive | Function | Date | Error | RegExp
 export type DeepReadonly<T> = T extends Builtin
@@ -144,6 +143,7 @@ export type DeepReadonly<T> = T extends Builtin
                   : Readonly<T>
 
 /**
+ * ! 只读 proxy
  * Creates a readonly copy of the original object. Note the returned copy is not
  * made reactive, but `readonly` can be called on an already reactive object.
  */
@@ -188,31 +188,30 @@ function createReactiveObject(
   baseHandlers: ProxyHandler<any>,
   collectionHandlers: ProxyHandler<any>
 ) {
-  // ? target 必须为对象类型。
+  // ? target 必须为对象 或 数组
   if (!isObject(target)) {
     if (__DEV__) {
       console.warn(`value cannot be made reactive: ${String(target)}`)
     }
     return target
   }
-  // ? target is already a Proxy, return it.
-  // exception: calling readonly() on a reactive object
-  // target 已经是 proxy 直接返回；通过 target.__v_raw 属性判断 target 是否为响应式对象。
+  // ? target 已经是 proxy 直接返回；
+  // ? 通过 target.__v_raw 属性判断 target 是否为响应式对象。
+  // ? 例外：如果 readonly 作用于一个响应式对象，则继续
   if (
     target[ReactiveFlags.RAW] &&
     !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
   ) {
     return target
   }
-  // target already has corresponding Proxy
-  // ? 已经有对应的 映射 Proxy 返回。原始对象target多次执行 reactive 会返回相同的 proxy
+  // ? 已经有对应的 Proxy 返回。原始对象target多次执行 reactive 会返回相同的 proxy
   const proxyMap = isReadonly ? readonlyMap : reactiveMap
   const existingProxy = proxyMap.get(target)
   if (existingProxy) {
     return existingProxy
   }
-  // only a whitelist of value types can be observed.
-  // ? 验证 target 类型是否为白名单中的类型。
+  // ? 验证 target 类型是否为白名单中的类型。 
+  // ? object/array 为 COMMON；Map/Set/WeakMap/WeakSet 为 COLLECTION 
   const targetType = getTargetType(target)
   if (targetType === TargetType.INVALID) {
     return target
