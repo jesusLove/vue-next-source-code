@@ -121,11 +121,13 @@ export function watch<
 
 // implementation
 // ! watch 实现
+// ? 侦听：返回响应对象的getter函数；侦听一个响应式对象；侦听多个响应式对象。
 export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   source: T | WatchSource<T>,
   cb: any,
   options?: WatchOptions<Immediate>
 ): WatchStopHandle {
+  // ? 验证 cb 是否为一个函数
   if (__DEV__ && !isFunction(cb)) {
     warn(
       `\`watch(fn, options?)\` signature has been moved to a separate API. ` +
@@ -135,11 +137,11 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   }
   return doWatch(source as any, cb, options)
 }
-// ? 标准化 source
-// ? 构建 applyCb 回调函数
-// ? 创建 scheduler 时序执行函数
-// ? 创建 effect 副作用函数
-// ? 返回侦听器销毁函数
+// ? 1.标准化 source
+// ? 2.构建 applyCb 回调函数
+// ? 3.创建 scheduler 时序执行函数: 回调函数通过一定的调度执行的。
+// ? 4.创建 effect 副作用函数： 《==== watch的核心
+// ? 5.返回侦听器销毁函数
 function doWatch(
   source: WatchSource | WatchSource[] | WatchEffect | object,
   cb: WatchCallback | null,
@@ -169,7 +171,10 @@ function doWatch(
         `a reactive object, or an array of these types.`
     )
   }
-  // ? 1 标准化 Source
+  // ? 1 标准化 Source：由于 source 可能是 getter 函数、响应式对象或者响应式对象数组。
+  // ? 最终处理成 getter 函数
+  // ? getter 函数返回一个响应式对象，后续创建 reactiveEffect 副作用函数需要用到，
+  // ? 每次执行 reactiveEffect 就会把 getter 函数返回的响应式对象作为 watcher 求值的结果。
   let getter: () => any
   let forceTrigger = false
 
@@ -225,13 +230,17 @@ function doWatch(
     getter = NOOP
     __DEV__ && warnInvalidSource(source)
   }
-
+  // ? deep 为 true 时，getter 会被 traverse 包裹一层
+  // ? traverse 通过递归的方式访问 value 的每个子属性。
+  // ? 为什么递归访问每个子属性？deep 属于 watcher 的一个配置选项，深度侦听，通过遍历对象的每一个子属性来实现。
   if (cb && deep) {
     const baseGetter = getter
     getter = () => traverse(baseGetter())
   }
 
-  // ? 回调函数的处理逻辑
+  // ?2. 回调函数的处理逻辑
+  // ? 回调函数三个参数：新值，旧值，onInvalidate无效回调。
+  // ? 实际上是对 cb 一层封装，当侦听的值改变是执行该函数.
   let cleanup: () => void
   // 注册无效回调函数
   const onInvalidate: InvalidateCbRegistrator = (fn: () => void) => {
@@ -257,26 +266,29 @@ function doWatch(
   // * 旧值初始值
   let oldValue = isArray(source) ? [] : INITIAL_WATCHER_VALUE
   const job: SchedulerJob = () => {
+    // * 组件销毁后，回调函数不应该被执行，直接返回
     if (!runner.active) {
       return
     }
     if (cb) {
       // watch(source, cb)
-      // * 新值
+      // * 新值：实际执行前面创建的 getter 函数求新值。
       const newValue = runner()
+      // * 如果 deep 情况或新旧值变化，则执行回调函数。
       if (deep || forceTrigger || hasChanged(newValue, oldValue)) {
         // cleanup before running cb again
         if (cleanup) {
           cleanup()
         }
         // * 执行 cb, 三个参数：新值、旧值、无效处理函数
+        // * 第一次执行时，旧值初始值是空数组或者 undefined
         callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
           newValue,
           // pass undefined as the old value when it's changed for the first time
           oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue,
           onInvalidate
         ])
-        // * 重置旧值
+        // * 重置旧值: 执行回调函数后，把 oldValue 更新为 newValue
         oldValue = newValue
       }
     } else {
@@ -290,57 +302,63 @@ function doWatch(
   // it is allowed to self-trigger (#1727)
   job.allowRecurse = !!cb
 
-  // ? 构建 scheduler 时序执行函数
+  // ? 3.构建 scheduler 时序执行函数
+  // ? 作用：根据某种调度的方式去执行某种函数，主要影响到的回调函数的执行方式。
   let scheduler: ReactiveEffectOptions['scheduler']
-  // * 同步 sync watcher, 当数据变化时同步执行回调函数
+
   // ! queuePreFlushCb 和 queuePostRenderEffect 把回调函数推入到异步队列中。
   if (flush === 'sync') {
+    // * 同步 sync watcher, 当数据变化时同步执行回调函数
     scheduler = job
   } else if (flush === 'post') {
+    // * 进入异步队列，组件更新后执行
     scheduler = () => queuePostRenderEffect(job, instance && instance.suspense)
   } else {
     // default: 'pre'
-    // 默认 pre， 回调函数通过 queuePreFlushCb 的方式组件更新之前执行，
-    // 如果没有挂载，同步执行确保在组件更新之前执行
     scheduler = () => {
       if (!instance || instance.isMounted) {
+        // * 进入异步队列，组件更新后执行
         queuePreFlushCb(job)
       } else {
         // with 'pre' option, the first call must happen before
         // the component is mounted so it is called synchronously.
+        // * 如果组件没有挂载，则同步执行确保在组件挂载前
         job()
       }
     }
   }
-  // 创建 effect 函数
+  // ? 4.创建 effect 副作用函数
   const runner = effect(getter, {
+    // *延迟执行
     lazy: true,
     onTrack,
     onTrigger,
     scheduler
   })
-
+  // * 在组件实例中记录这个 effect
   recordInstanceBoundEffect(runner, instance)
 
   // initial run
-  // 初始化执行
+  // * 初始化执行
   if (cb) {
     if (immediate) {
       job()
     } else {
-      // 旧值
+      // *求旧值
       oldValue = runner()
     }
   } else if (flush === 'post') {
     queuePostRenderEffect(runner, instance && instance.suspense)
   } else {
-    // 没有 cb 立即执行
+    // * 没有 cb 立即执行
     runner()
   }
-
+  // ?5. 返回销毁函数
   return () => {
+    // * 清空 runner 的相关依赖，防止对数据的侦听
     stop(runner)
     if (instance) {
+      // * 移除组件 effects 对这个 runner 的引用。
       remove(instance.effects!, runner)
     }
   }
@@ -359,7 +377,7 @@ export function instanceWatch(
     : source.bind(publicThis)
   return doWatch(getter, cb.bind(publicThis), options, this)
 }
-
+// ! traverse 通过递归的方式访问 value 的每个子属性。
 function traverse(value: unknown, seen: Set<unknown> = new Set()) {
   if (!isObject(value) || seen.has(value)) {
     return value
