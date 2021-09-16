@@ -65,32 +65,34 @@ class RefImpl<T> {
   constructor(private _rawValue: T, public readonly _shallow = false) {
     // 浅层 ref 私有 _value 为 _rawValue
     // 深层将 rawValue 转为响应对象，然后赋值个 _value
-    // * convert 如果 是对象转为 reactive
+    // ? convert 如果 是对象转为 reactive
     this._value = _shallow ? _rawValue : convert(_rawValue)
   }
 
   get value() {
+    // ? 依赖收集， key 固定为 value
     track(toRaw(this), TrackOpTypes.GET, 'value')
     return this._value
   }
 
   set value(newVal) {
-    // 判断有变化更新新值
+    // ?判断有变化更新新值,只处理 value 属性的修改
     if (hasChanged(toRaw(newVal), this._rawValue)) {
+      // ? 判断有变化后更新值
       this._rawValue = newVal
       this._value = this._shallow ? newVal : convert(newVal)
-      // 派发通知
+      // ?派发通知
       trigger(toRaw(this), TriggerOpTypes.SET, 'value', newVal)
     }
   }
 }
 // ! 创建 ref，过滤掉已经为 ref 对象的值
 function createRef(rawValue: unknown, shallow = false) {
-  // 1. 判断是否已经为 ref 对象
+  // ?判断是否已经为 ref 对象
   if (isRef(rawValue)) {
     return rawValue
   }
-  // 2. 创建 ref 对象
+  // ?创建 ref 对象
   return new RefImpl(rawValue, shallow)
 }
 
