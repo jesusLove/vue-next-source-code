@@ -63,7 +63,7 @@ let activeEffect: ReactiveEffect | undefined
 export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
 export const MAP_KEY_ITERATE_KEY = Symbol(__DEV__ ? 'Map key iterate' : '')
 
-// 判断是否为 effect
+// ! 判断是否为 effect: 属性 _isEffect 判断
 export function isEffect(fn: any): fn is ReactiveEffect {
   return fn && fn._isEffect === true
 }
@@ -317,11 +317,11 @@ export function trigger(
         oldTarget
       })
     }
-    // 调度执行
+    // * 调度执行
     if (effect.options.scheduler) {
       effect.options.scheduler(effect)
     } else {
-      // 执行effect
+      // * 执行effect
       effect()
     }
   }
