@@ -105,10 +105,8 @@ export function handleError(
   const contextVNode = instance ? instance.vnode : null
   if (instance) {
     let cur = instance.parent
-    // the exposed instance is the render proxy to keep it consistent with 2.x
     // ? 为了兼容 2.x 版本，暴露组件实例给钩子函数
     const exposedInstance = instance.proxy
-    // in production the hook receives only the error code
     // ? 获取错误信息
     const errorInfo = __DEV__ ? ErrorTypeStrings[type] : type
     // ? 尝试向上查找父组件，执行 errorCaptured 钩子函数

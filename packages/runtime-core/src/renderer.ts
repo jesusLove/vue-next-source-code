@@ -2049,7 +2049,8 @@ function baseCreateRenderer(
       hostInsert(el!, container, anchor)
     }
   }
-
+  // ! 遍历子树，通过递归的方式来销毁子节点
+  // ! 遇到组件节点执行 unmountComponent，遇到普通元素执行删除 DOM。
   const unmount: UnmountFn = (
     vnode,
     parentComponent,
@@ -2189,6 +2190,7 @@ function baseCreateRenderer(
     hostRemove(end)
   }
   // ! 组件销毁
+  // ? 清理组件实例上绑定的 effects 副作用函数和注册的副作用 渲染函数 update，以及调用 UNmount 销毁子树。
   const unmountComponent = (
     instance: ComponentInternalInstance,
     parentSuspense: SuspenseBoundary | null,
@@ -2199,8 +2201,7 @@ function baseCreateRenderer(
     }
 
     const { bum, effects, update, subTree, um } = instance
-    // beforeUnmount hook
-    // 调用 钩子
+    // ? 执行 beforeUnmount 钩子函数
     if (bum) {
       invokeArrayFns(bum)
     }
@@ -2210,15 +2211,12 @@ function baseCreateRenderer(
         stop(effects[i])
       }
     }
-    // update may be null if a component is unmounted before its async
-    // setup has resolved.
     // ?异步组件加载钱就销毁，则不会注册 effect 函数
     if (update) {
       stop(update)
       unmount(subTree, instance, parentSuspense, doRemove)
     }
-    // unmounted hook
-    // 调用 钩子
+    // ? 执行 unmounted 钩子函数
     if (um) {
       queuePostRenderEffect(um, parentSuspense)
     }
