@@ -119,7 +119,10 @@ function setFullProps(instance, rawProps, props, attrs) {
 #### 1.1.1 标准化 Props
 
 ```js
+// comp: vnode 节点
+// appContext: 上下文信息
 function normalizePropsOptions(comp, appContext, asMixin = false) {
+  // vnode 中有 __props 直接返回
   if (!appContext.deopt && comp.__props) {
     return comp.__props
   }
@@ -196,4 +199,20 @@ props 的数据，是父组件传递给子组件的数据。
 
 ## 2. Props 更新
 
-`updateComponent`
+`updateComponent` 中调用了 updateComponentPreRender 函数，该函数中：
+
+```js
+const updateComponentPreRender = (instance, nextVNode, optimized) => {
+  nextVNode.component = instance
+  const prevProps = instance.vnode.props
+  instance.vnode = nextVNode
+  instance.next = null
+  updateProps(instance, nextVNode.props, prevProps, optimized)
+  updateSlots(instance, nextVNode.children)
+  // props update may have triggered pre-flush watchers.
+  // flush them before the render update.
+  flushPreFlushCbs(undefined, instance.update)
+}
+```
+
+updateProps、updateSlots 分别更新 props 和 slots。
